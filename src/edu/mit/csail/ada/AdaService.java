@@ -1,24 +1,17 @@
 package edu.mit.csail.ada;
 
-
-
-import edu.mit.csail.kde.KDE;
 import edu.mit.csail.sensors.Accel;
 import android.app.Service;
 import android.content.Intent;
-import android.content.res.AssetManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
-import android.util.Log;
 import android.widget.Toast;
 
 public class AdaService extends Service{
 
 	private final Messenger mMessenger = new Messenger(new IncomingHandler());
-	
-		
 	
 	/** Sensors*/
 	private Accel accel = new Accel();

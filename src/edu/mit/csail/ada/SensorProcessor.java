@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -26,12 +27,15 @@ import android.util.Log;
  */
 
 public class SensorProcessor {
+	
 	private int latency;// sec
 	private Timer timer;
+	
 	private ArrayList<Double> accelList = new ArrayList<Double>();
 	
+	
 	/** The array used to store kde estimators (one for each activity)*/
-	private KDE[][] kdeEstimators = new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM]; 
+	private KDE[][] kdeEstimators; //= new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM]; 
 	
 	public SensorProcessor(int latency){
 		this.latency = latency;
@@ -40,11 +44,15 @@ public class SensorProcessor {
 		
 		this.timer = new Timer();
 		this.accelList.clear();
+		kdeEstimators = new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM];
+		for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
+			kdeEstimators[i][0] = new KDE(Global.ACCEL_FEATURE_BW);
+			kdeEstimators[i][1] = new KDE(Global.ACCEL_FEATURE_BW,0);
+			kdeEstimators[i][2] = new KDE(Global.ACCEL_FEATURE_BW,0);	
+		}
 		loadTrainingSet();
 		
-		
-        timer.schedule(new FusionAlgorithm(), latency * 1000); 
-        
+        timer.schedule(new FusionAlgorithm(), latency * 1000);  
 	}
 	
 	/**
@@ -56,19 +64,19 @@ public class SensorProcessor {
 			InputStream is = am.open(Global.trainingDataFilename);
 			BufferedReader r = new BufferedReader(new InputStreamReader(is));
 			String line;
+			
 			while ((line = r.readLine()) != null) {
 			   String[] segs = line.split(",");
+			   int gt = Integer.parseInt(segs[3]);
 			   double mean = Double.parseDouble(segs[0]);
 			   double sigma = Double.parseDouble(segs[1]);
 			   double pf = Double.parseDouble(segs[2]);
-			   int gt = Integer.parseInt(segs[3]);
-			   
+			  
 			   this.kdeEstimators[gt][0].addValue(mean, 1.0);
 			   this.kdeEstimators[gt][1].addValue(sigma, 1.0);
-			   this.kdeEstimators[gt][2].addValue(pf, 1.0);
+			   this.kdeEstimators[gt][2].addValue(pf,1.0);
 			   
 			}
-			
 		} catch (IOException e) {
 			Log.e(MainActivity.TAG, "Error open training data");
 			e.printStackTrace();
@@ -106,25 +114,69 @@ public class SensorProcessor {
 			
 			double[] accelFeatures = new double[3];
 			extractAccelFeature(accelFeatures);
-			double[] accel_prob = computeAccelProb(accelFeatures);
+			double[][] accel_debug_bounded = new double[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM];
+			double[][] accel_debug_unbounded = new double[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM];
+			double[] accel_post_bounded = new double[Global.ACTIVITY_NUM];
+			double[] accel_post_unbounded = new double[Global.ACTIVITY_NUM];
+			
+			computeAccelProb(accelFeatures, accel_debug_bounded, accel_debug_unbounded, accel_post_bounded, accel_post_unbounded);
+			/**
 			System.out.println(accelFeatures[0] + "," + accelFeatures[1]+ ","+ accelFeatures[2]);
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					System.out.println("Activity:" + i + ": unbounded:" + accel_debug_unbounded[i][0] + ", " + accel_debug_unbounded[i][1] + ", "+ accel_debug_unbounded[i][2]);
+			}
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					System.out.println("Activity:" + i + ": bounded:" + accel_debug_bounded[i][0] + ", " + accel_debug_bounded[i][1] + ", "+ accel_debug_bounded[i][2]);
+			}
+			**/
+			int bounded_prediction = 0;
+			int unbounded_prediction = 0;
+			double bounded_maxlikelihood  = accel_post_bounded[0];
+			double unbounded_maxlikelihood = accel_post_unbounded[0];
+			for(int i = 1; i < Global.ACTIVITY_NUM; ++i){
+				if (accel_post_bounded[i] > bounded_maxlikelihood){
+					bounded_prediction = i;
+					bounded_maxlikelihood = accel_post_bounded[i];
+				}
+				if (accel_post_unbounded[i] > unbounded_maxlikelihood){
+					unbounded_prediction = i;
+					unbounded_maxlikelihood = accel_post_unbounded[i];
+				}
+			}
+			/**
+			System.out.println("bounded: " + bounded_prediction + "\n"+ accel_post_bounded[0] + "," + accel_post_bounded[1] + "," +accel_post_bounded[2] + "," +accel_post_bounded[3] + "," +accel_post_bounded[4]);
+			System.out.println("unbounded: " + unbounded_prediction + "\n" + accel_post_unbounded[0] + "," + accel_post_unbounded[1] + "," +accel_post_unbounded[2] + "," +accel_post_unbounded[3] + "," +accel_post_unbounded[4]);
+			**/
+			
 			
 			timer.schedule(new FusionAlgorithm(), latency * 1000); 
 		}
 		
-		public double[] computeAccelProb(double[] accelFeatures){
-			double[] accel_posteriorProb = new double[5];
+		
+		public void computeAccelProb(double[] accelFeatures, double[][] accel_debug_bounded, double[][] accel_debug_unbounded, double[] accel_post_bounded, double[] accel_post_unbounded){
 			
+
+			double unbounded_denominator = 0;
+			double bounded_denominator = 0;
 			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				accel_post_unbounded[i] = 1.0;
+				accel_post_bounded[i] = 1.0;
 				for(int j = 0; j < Global.ACCEL_FEATURE_NUM; ++j){
-					kdeEstimators[i][j].logDensity(accelFeatures[j]);
-				}
-				 
-				  			
+					accel_post_unbounded[i] *= kdeEstimators[i][j].evaluate_unbounded(accelFeatures[j]);
+					accel_post_bounded[i] *= kdeEstimators[i][j].evaluate_renorm(accelFeatures[j]);
+					
+					accel_debug_unbounded[i][j] = kdeEstimators[i][j].evaluate_unbounded((accelFeatures[j]));			
+					accel_debug_bounded[i][j] = kdeEstimators[i][j].evaluate_renorm((accelFeatures[j]));
+					
+				}	  			
+				unbounded_denominator += accel_post_unbounded[i];
+				bounded_denominator += accel_post_bounded[i];
 			}
 			
-			
-			return;
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				accel_post_unbounded[i] /= unbounded_denominator;
+				accel_post_bounded[i] /= bounded_denominator;
+			}
 			
 		}
 		public void computeDFT(ArrayList<Double> accelList, double[] fftOutBuffer, int len) {

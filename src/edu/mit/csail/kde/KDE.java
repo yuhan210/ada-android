@@ -1,9 +1,11 @@
 package edu.mit.csail.kde;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+
 
 public class KDE {
 
@@ -16,19 +18,60 @@ public class KDE {
 	/** The weighted sum of squared values */
 	protected double m_WeightedSumSquared = 0;
 
+	/** The weight of the values collected so far */
+	protected double m_SumOfWeights = 0;
+	
 	/** The current bandwidth (only computed when needed) */
 	protected double m_Width = Double.MAX_VALUE;
 	
-	/** The weight of the values collected so far */
-	protected double m_SumOfWeights = 0;
-
+	/** Lower bound */
+	public static double m_Lower = -Double.MAX_VALUE;
+	
+	/** Upper bound */
+	public static double m_Upper = Double.MAX_VALUE;
+	  
 	/** Constant for Gaussian density. */
 	public static final double CONST = - 0.5 * Math.log(2 * Math.PI);
 
 	/** Threshold at which further kernels are no longer added to sum. */
 	protected double m_Threshold = 1.0E-6;
+
+
+	/**
+	 * KDE constructor. Set up the width, lower, and upper bound.
+	 * 
+	 * @param bw
+	 * @param lower
+	 * @param upper
+	 */
+	public KDE(double bw, double lower, double upper){
+		m_Lower = lower;
+		m_Upper = upper;
+		m_Width = bw;
+	}
+	/**
+	 * KDE constructor. Set up the width, lower, and upper bound.
+	 * 
+	 * @param bw
+	 * @param lower
+	 * @param upper
+	 */
+	public KDE(double bw, double lower){
+		m_Lower = lower;
+		m_Width = bw;
+	}
 	
-	
+	/**
+	 * KDE constructor. 
+	 * 
+	 * @param bw
+	 * @param lower
+	 * @param upper
+	 */
+	public KDE(double bw){
+		m_Width = bw;
+	}
+
 	/**
 	  * Adds a data point to the density estimator.
 	  *
@@ -45,9 +88,122 @@ public class KDE {
 	   } else {
 	     m_TM.put(value, m_TM.get(value) + weight);
 	   }
+	 }	
+	 
+	 /**
+	  * Compute the pdf of the point (does not consider the boundary)
+	  * @param point
+	  * @return
+	  */
+	 public double evaluate_unbounded(double point){
+		 	
+		    // Iterate through data values
+		    Iterator<Map.Entry<Double,Double>> itr = m_TM.entrySet().iterator();
+		    double sum = 0.0;
+		    while(itr.hasNext()) {
+		      Map.Entry<Double,Double> entry = itr.next();
+
+		      // Skip entry if weight is zero because it cannot contribute to sum
+		      if (entry.getValue() > 0) {
+		    	double z = point - entry.getKey()/m_Width;
+		    	double terms = kernel(z);
+		    	terms *= entry.getValue()/m_Width;
+		    	sum += terms;
+		      }
+		    }
+		    
+		    return sum/(m_SumOfWeights);
+	 }
+	
+	 
+	
+	 /**
+	  * Approximate normal distribution's cdf (1/2 * [1 + erf(x/sqrt(2))])
+	  * Based on https://en.wikipedia.org/wiki/Normal_distribution
+	  */
+	 public double approx_cdf(double z) {
+		
+	        return 0.5 * (1.0 + erf(z / (Math.sqrt(2.0))));
+	 }
+	 /**
+	  * ERF (Gaussian Error Function)
+	  * fractional error in math formula less than 1.2 * 10 ^ -7.
+	  * although subject to catastrophic cancellation when z in very close to 0
+	  * from Chebyshev fitting formula for erf(z) from Numerical Recipes, 6.2
+	  */
+	 public double erf(double z) {
+		 double t = 1.0 / (1.0 + 0.5 * Math.abs(z));
+
+	     // use Horner's method
+	     double ans = 1 - t * Math.exp( -z*z   -   1.26551223 +
+	                                         t * ( 1.00002368 +
+	                                         t * ( 0.37409196 + 
+	                                         t * ( 0.09678418 + 
+	                                         t * (-0.18628806 + 
+	                                         t * ( 0.27886807 + 
+	                                         t * (-1.13520398 + 
+	                                         t * ( 1.48851587 + 
+	                                         t * (-0.82215223 + 
+	                                         t * ( 0.17087277))))))))));
+	     if (z >= 0) return  ans;
+	     else        return -ans;
+	 }
+
+	 /**
+	  * Evaluate bounded KDE probability using renormalization
+	  * @param point
+	  * @return
+	  */
+	 public double evaluate_renorm(double point){
+		
+		 // Iterate through data values
+		    Iterator<Map.Entry<Double,Double>> itr = m_TM.entrySet().iterator();
+		    double sum = 0.0;
+		    while(itr.hasNext()) {
+		      Map.Entry<Double,Double> entry = itr.next();
+
+		      // Skip entry if weight is zero because it cannot contribute to sum
+		      if (entry.getValue() > 0) {
+		    	double l = (m_Lower - entry.getKey())/m_Width; //normalize
+		 		double u = (m_Upper - entry.getKey())/m_Width;
+		 		 
+		    	double z = (point - entry.getKey())/m_Width;
+		    	double a1 = approx_cdf(u) - approx_cdf(l);
+		    	double terms = kernel(z) * ((entry.getValue()/m_Width)/a1) ;
+		    	sum += terms;
+		      }
+		    }
+		    return sum/m_SumOfWeights;
+	 }
+		
+	 
+	 /**
+	  * Gaussian kernel
+	  * @param input to the kernel
+	  * @return
+	  */
+	 public double kernel(double z){
+		 return Math.exp(-z*z / 2) / Math.sqrt(2 * Math.PI);
 	 }
 	 
+     // Not being used.. return Phi(z, mu, sigma) = Gaussian cdf with mean mu and stddev sigma
+	 public double taylor_cdf(double z, double mu, double sigma) {
+	     return Phi((z - mu) / sigma);
+     } 
 	 
+	 // Not being used...return Phi(z) = standard Gaussian cdf using Taylor approximation
+	 public double Phi(double z) {
+	     if (z < -8.0) return 0.0;
+	     if (z >  8.0) return 1.0;
+	     double sum = 0.0, term = z;
+	     for (int i = 3; sum + term != sum; i += 2) {
+	         sum  = sum + term;
+	         term = term * z * z / i;
+	     }
+	     return 0.5 + sum * kernel(z);
+	 }
+   
+		                
 	 /**
 	   * Returns the natural logarithm of the density estimate at the given
 	   * point.
@@ -75,7 +231,7 @@ public class KDE {
 	  }
 	/**
 	 *  Compute running sum of density values and weights.
-	 */
+	
 	private void runningSum(Set<Map.Entry<Double,Double>> c, double value, 
 								double[] sums){
 		 Iterator<Map.Entry<Double,Double>> itr = c.iterator();
@@ -85,7 +241,7 @@ public class KDE {
 			        double diff = (entry.getKey() - value) / m_Width;
 			  }
 		 }
-	}
+	} */
 	  
 	/**
 	 * Compute running log sum of density values and weights.
