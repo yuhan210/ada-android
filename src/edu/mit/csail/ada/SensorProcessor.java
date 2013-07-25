@@ -11,7 +11,7 @@ import java.util.TimerTask;
 
 import edu.mit.csail.kde.KDE;
 import edu.mit.csail.sensors.Accel;
-
+import edu.mit.csail.sensors.WiFi;
 
 import android.content.res.AssetManager;
 import android.hardware.Sensor;
@@ -22,37 +22,49 @@ import android.util.Log;
 /**
  * 
  * @author yuhan
- * SensorProcessor processes data from sensors and implements the fusion algorithm.
+ * SensorProcessor processes data from sensors and implements the fusing algorithm.
  *
  */
 
 public class SensorProcessor {
 	
 	private int latency;// sec
-	private Timer timer;
-	
+	private Timer algoTimer;
+	private Timer wifiTimer;
+	private AcclListener accelListerner = new AcclListener();
 	private ArrayList<Double> accelList = new ArrayList<Double>();
 	
 	
 	/** The array used to store kde estimators (one for each activity)*/
-	private KDE[][] kdeEstimators; //= new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM]; 
+	private KDE[][] accelKdeEstimators; //= new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM]; 
 	
 	public SensorProcessor(int latency){
 		this.latency = latency;
-		Accel.init();
-		Accel.addListener(new AcclListener(), SensorManager.SENSOR_DELAY_NORMAL);
+		this.algoTimer = new Timer();
+		this.wifiTimer = new Timer();
+		accelKdeEstimators = new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM];
 		
-		this.timer = new Timer();
-		this.accelList.clear();
-		kdeEstimators = new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM];
 		for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
-			kdeEstimators[i][0] = new KDE(Global.ACCEL_FEATURE_BW);
-			kdeEstimators[i][1] = new KDE(Global.ACCEL_FEATURE_BW,0);
-			kdeEstimators[i][2] = new KDE(Global.ACCEL_FEATURE_BW,0);	
+			accelKdeEstimators[i][0] = new KDE(Global.ACCEL_FEATURE_BW);
+			accelKdeEstimators[i][1] = new KDE(Global.ACCEL_FEATURE_BW,0);
+			accelKdeEstimators[i][2] = new KDE(Global.ACCEL_FEATURE_BW,0);	
 		}
-		loadTrainingSet();
 		
-        timer.schedule(new FusionAlgorithm(), latency * 1000);  
+		this.accelList.clear();
+		Accel.init(accelListerner, SensorManager.SENSOR_DELAY_NORMAL);
+		WiFi.init();
+		
+		
+		loadTrainingSet();
+		run();
+		
+        
+	}
+	public void run(){
+		algoTimer.schedule(new FusionAlgorithm(), latency * 1000);
+	}
+	public void stopSensorProcessor(){
+		Accel.stop(accelListerner);
 	}
 	
 	/**
@@ -72,9 +84,9 @@ public class SensorProcessor {
 			   double sigma = Double.parseDouble(segs[1]);
 			   double pf = Double.parseDouble(segs[2]);
 			  
-			   this.kdeEstimators[gt][0].addValue(mean, 1.0);
-			   this.kdeEstimators[gt][1].addValue(sigma, 1.0);
-			   this.kdeEstimators[gt][2].addValue(pf,1.0);
+			   this.accelKdeEstimators[gt][0].addValue(mean, 1.0);
+			   this.accelKdeEstimators[gt][1].addValue(sigma, 1.0);
+			   this.accelKdeEstimators[gt][2].addValue(pf,1.0);
 			   
 			}
 		} catch (IOException e) {
@@ -103,9 +115,8 @@ public class SensorProcessor {
         {
         	this.accuracy = accuracy;
         }
-		
     }
-	
+
 	
 	class FusionAlgorithm extends TimerTask {
 		
@@ -147,26 +158,22 @@ public class SensorProcessor {
 			System.out.println("bounded: " + bounded_prediction + "\n"+ accel_post_bounded[0] + "," + accel_post_bounded[1] + "," +accel_post_bounded[2] + "," +accel_post_bounded[3] + "," +accel_post_bounded[4]);
 			System.out.println("unbounded: " + unbounded_prediction + "\n" + accel_post_unbounded[0] + "," + accel_post_unbounded[1] + "," +accel_post_unbounded[2] + "," +accel_post_unbounded[3] + "," +accel_post_unbounded[4]);
 			**/
-			
-			
-			timer.schedule(new FusionAlgorithm(), latency * 1000); 
+		 
 		}
 		
 		
 		public void computeAccelProb(double[] accelFeatures, double[][] accel_debug_bounded, double[][] accel_debug_unbounded, double[] accel_post_bounded, double[] accel_post_unbounded){
-			
-
 			double unbounded_denominator = 0;
 			double bounded_denominator = 0;
 			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
 				accel_post_unbounded[i] = 1.0;
 				accel_post_bounded[i] = 1.0;
 				for(int j = 0; j < Global.ACCEL_FEATURE_NUM; ++j){
-					accel_post_unbounded[i] *= kdeEstimators[i][j].evaluate_unbounded(accelFeatures[j]);
-					accel_post_bounded[i] *= kdeEstimators[i][j].evaluate_renorm(accelFeatures[j]);
+					accel_post_unbounded[i] *= accelKdeEstimators[i][j].evaluate_unbounded(accelFeatures[j]);
+					accel_post_bounded[i] *= accelKdeEstimators[i][j].evaluate_renorm(accelFeatures[j]);
 					
-					accel_debug_unbounded[i][j] = kdeEstimators[i][j].evaluate_unbounded((accelFeatures[j]));			
-					accel_debug_bounded[i][j] = kdeEstimators[i][j].evaluate_renorm((accelFeatures[j]));
+					accel_debug_unbounded[i][j] = accelKdeEstimators[i][j].evaluate_unbounded((accelFeatures[j]));			
+					accel_debug_bounded[i][j] = accelKdeEstimators[i][j].evaluate_renorm((accelFeatures[j]));
 					
 				}	  			
 				unbounded_denominator += accel_post_unbounded[i];
@@ -179,6 +186,7 @@ public class SensorProcessor {
 			}
 			
 		}
+		
 		public void computeDFT(ArrayList<Double> accelList, double[] fftOutBuffer, int len) {
 			int N = len;
 			for (int i = 1; i < (N/2 + 1); ++i) {
@@ -193,6 +201,7 @@ public class SensorProcessor {
 				fftOutBuffer[i] = 2 * Math.sqrt(realPart * realPart + imgPart * imgPart);
 			}
 		}
+		
 		
 		public void extractAccelFeature(double[] f){
 			double sum = 0.0;

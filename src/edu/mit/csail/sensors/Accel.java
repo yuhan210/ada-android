@@ -14,21 +14,15 @@ public class Accel {
 	private static SensorManager sensorManager;
 	private static Sensor accelerometer;
 
-	public static void init()
+	public static void init(SensorEventListener listener, int period)
     {	
 		sensorManager = (SensorManager)Global.context.getSystemService(Context.SENSOR_SERVICE);
 		accelerometer = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER).get(0);
+		sensorManager.registerListener(listener, accelerometer, period); 
     }
 	
 
-	/* Listeners and Events */
-	public static void addListener(SensorEventListener listener, int period)
-	{
-		System.out.println(accelerometer);
-		sensorManager.registerListener(listener, accelerometer, period); 
-	}
-	
-	public static void removeListener(SensorEventListener listener)
+	public static void stop(SensorEventListener listener)
 	{
 		sensorManager.unregisterListener(listener);
 	}
