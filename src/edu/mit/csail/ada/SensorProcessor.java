@@ -121,7 +121,7 @@ public class SensorProcessor {
 			is = am.open(Global.gpsTrainingDataFilename);
 			r = new BufferedReader(new InputStreamReader(is));
 			while ((line = r.readLine()) != null) {
-				String[] segs = line.split(",");
+				String[] segs = line.split(",");d
 				int gt = Integer.parseInt(segs[1]);
 				double speed = Double.parseDouble(segs[0]);
 				this.gpsKdeEstimator[gt].addValue(speed, 1.0);
