@@ -121,7 +121,7 @@ public class SensorProcessor {
 			is = am.open(Global.gpsTrainingDataFilename);
 			r = new BufferedReader(new InputStreamReader(is));
 			while ((line = r.readLine()) != null) {
-				String[] segs = line.split(",");d
+				String[] segs = line.split(",");
 				int gt = Integer.parseInt(segs[1]);
 				double speed = Double.parseDouble(segs[0]);
 				this.gpsKdeEstimator[gt].addValue(speed, 1.0);
@@ -141,6 +141,16 @@ public class SensorProcessor {
 	 *
 	 */
 	class FusionAlgorithm extends TimerTask {
+		double[] activityBoundedConfidence = new double[Global.ACTIVITY_NUM];
+		double[] activityUnboundedConfidence = new double[Global.ACTIVITY_NUM];
+		
+		
+		public FusionAlgorithm(){
+			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				activityBoundedConfidence[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
+				activityUnboundedConfidence[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
+			}
+		}
 		
 		@Override
 		public void run() {
@@ -201,33 +211,53 @@ public class SensorProcessor {
 			}
 			
 			
-			
 			// Soft voting
-			
+			double[] combined_bounded_post_prob = new double[Global.ACTIVITY_NUM]; 
+			double[] combined_unbounded_post_prob = new double[Global.ACTIVITY_NUM]; 
+			double unbounded_denominator = 0;
+			double bounded_denominator = 0;
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				combined_bounded_post_prob[i] = accel_post_bounded[i] * wifi_post_bounded[i] * gps_post_bounded[i];
+				combined_unbounded_post_prob[i] = accel_post_unbounded[i] * wifi_post_unbounded[i] * gps_post_unbounded[i];
+				bounded_denominator += combined_bounded_post_prob[i];
+				unbounded_denominator += combined_unbounded_post_prob[i];
+			}
+			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				combined_bounded_post_prob[i] /= bounded_denominator;
+				combined_unbounded_post_prob[i] /= unbounded_denominator;
+			}
 			
 			
 			// EWMA smoothing
+			unbounded_denominator = 0;
+			bounded_denominator = 0;
+			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				activityBoundedConfidence[i] = Global.EWMA_ALPHA * combined_bounded_post_prob[i] + (1-Global.EWMA_ALPHA) * activityBoundedConfidence[i];
+				activityUnboundedConfidence[i] = Global.EWMA_ALPHA * combined_unbounded_post_prob[i] + (1-Global.EWMA_ALPHA) * activityUnboundedConfidence[i];
+				bounded_denominator += activityBoundedConfidence[i];
+				unbounded_denominator += activityUnboundedConfidence[i];
+			}
 			
 			
 			//Maximum likelihood 
 			int bounded_prediction = 0;
 			int unbounded_prediction = 0;
-			double bounded_maxlikelihood  = accel_post_bounded[0];
-			double unbounded_maxlikelihood = accel_post_unbounded[0];
+			double bounded_maxlikelihood  = activityBoundedConfidence[0];
+			double unbounded_maxlikelihood = activityUnboundedConfidence[0];
 			for(int i = 1; i < Global.ACTIVITY_NUM; ++i){
-				if (accel_post_bounded[i] > bounded_maxlikelihood){
+				if (activityBoundedConfidence[i] > bounded_maxlikelihood){
 					bounded_prediction = i;
-					bounded_maxlikelihood = accel_post_bounded[i];
+					bounded_maxlikelihood = activityBoundedConfidence[i];
 				}
-				if (accel_post_unbounded[i] > unbounded_maxlikelihood){
+				if (activityUnboundedConfidence[i] > unbounded_maxlikelihood){
 					unbounded_prediction = i;
-					unbounded_maxlikelihood = accel_post_unbounded[i];
+					unbounded_maxlikelihood = activityUnboundedConfidence[i];
 				}
 			}
-			/**
+			
 			System.out.println("bounded: " + bounded_prediction + "\n"+ accel_post_bounded[0] + "," + accel_post_bounded[1] + "," +accel_post_bounded[2] + "," +accel_post_bounded[3] + "," +accel_post_bounded[4]);
 			System.out.println("unbounded: " + unbounded_prediction + "\n" + accel_post_unbounded[0] + "," + accel_post_unbounded[1] + "," +accel_post_unbounded[2] + "," +accel_post_unbounded[3] + "," +accel_post_unbounded[4]);
-			**/
+			
 		 
 		}
 		

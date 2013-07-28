@@ -25,6 +25,8 @@ public class Global {
 	public static long startTime = 0;
 	public static Context context;
 	
+	
+	public static final double EWMA_ALPHA = 0.8;
 	public static void setContext(Context ctx){
 		context = ctx;
 	}
