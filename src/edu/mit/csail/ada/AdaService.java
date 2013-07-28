@@ -55,7 +55,7 @@ public class AdaService extends Service{
 	
 	public void onDestroy() 
     {
-		p.stopSensorProcessor();
+		p.stop();
 		Toast.makeText(this, "Ada service stopped", Toast.LENGTH_SHORT).show();
     }
 
