@@ -15,7 +15,8 @@ public class GPS {
 	private static LocationManager locationManager;
     private static LocationListener locationListener;
     private static List<Location> locList = new ArrayList<Location>(Global.LOOKBACK_NUM);
-    private static double aveSpeed = -1;
+    private static double aveSpeed = Global.INVALID_FEATURE;
+    private static int listSize = 0;
     
 	public static void init(){
 		locationManager = (LocationManager)Global.context.getSystemService(Context.LOCATION_SERVICE);
@@ -30,12 +31,14 @@ public class GPS {
     {
         public void onLocationChanged(Location loc) 
         {		
-        	if (locList.size() == Global.LOOKBACK_NUM){
+        	if (listSize == Global.LOOKBACK_NUM){
         		locList.remove(0);
+        		--listSize;
         	}
         	System.out.println("GPS received: " + loc.getLatitude() + "," + loc.getLongitude());
         	
         	locList.add(loc);
+        	++listSize;
         	updateSpeed();
         } 
         public void onProviderDisabled(String provider) 
@@ -53,7 +56,7 @@ public class GPS {
 	public static double updateSpeed(){
 		
 		if (locList.size() == 0){
-			aveSpeed = -1;
+			aveSpeed = Global.INVALID_FEATURE;
 			return aveSpeed;
 		}
 		
@@ -67,6 +70,7 @@ public class GPS {
 	}
 	
 	public static void stop(){
+		listSize = 0;
 		locationManager.removeUpdates(locationListener);
 	}
 }

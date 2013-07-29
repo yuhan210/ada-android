@@ -15,11 +15,9 @@ import edu.mit.csail.sensors.GPS;
 import edu.mit.csail.sensors.WiFi;
 
 import android.content.res.AssetManager;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.util.Log;
+
 /**
  * 
  * @author yuhan
@@ -31,13 +29,16 @@ public class SensorProcessor {
 	
 	private int latency;// sec
 	private Timer algoTimer;
-	private ArrayList<Double> accelList = new ArrayList<Double>();
-	
+	private FusionAlgorithm fusionAlgo = new FusionAlgorithm();
 	
 	/** The array used to store kde estimators (one for each activity)*/
 	private KDE[][] accelKdeEstimators; //= new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM]; 
 	private KDE[] wifiKdeEstimator;
 	private KDE[] gpsKdeEstimator;
+	
+	double[] activityBoundedConfidence = new double[Global.ACTIVITY_NUM];
+	double[] activityUnboundedConfidence = new double[Global.ACTIVITY_NUM];
+	
 	
 	public SensorProcessor(int latency){
 		this.latency = latency;
@@ -50,8 +51,10 @@ public class SensorProcessor {
 			accelKdeEstimators[i][0] = new KDE(Global.ACCEL_FEATURE_KDE_BW);
 			accelKdeEstimators[i][1] = new KDE(Global.ACCEL_FEATURE_KDE_BW,0);
 			accelKdeEstimators[i][2] = new KDE(Global.ACCEL_FEATURE_KDE_BW,0);
-			wifiKdeEstimator[i] = new KDE(Global.WIFI_FEATURE_KDE_BW);
+			wifiKdeEstimator[i] = new KDE(Global.WIFI_FEATURE_KDE_BW, 0);
 			gpsKdeEstimator[i] = new KDE(Global.GPS_FEATURE_KDE_BW, 0);
+			activityBoundedConfidence[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
+			activityUnboundedConfidence[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
 			
 		}
 		
@@ -68,9 +71,9 @@ public class SensorProcessor {
 	public void run(){
 		Accel.start(SensorManager.SENSOR_DELAY_NORMAL);
 		WiFi.start();
-		GPS.start(15);
+		GPS.start(latency);
 		
-		algoTimer.schedule(new FusionAlgorithm(), latency * 1000);
+		algoTimer.schedule(fusionAlgo, 0, latency * 1000);
 	}
 	
 	public void stop(){
@@ -141,24 +144,11 @@ public class SensorProcessor {
 	 *
 	 */
 	class FusionAlgorithm extends TimerTask {
-		double[] activityBoundedConfidence = new double[Global.ACTIVITY_NUM];
-		double[] activityUnboundedConfidence = new double[Global.ACTIVITY_NUM];
-		
-		
-		public FusionAlgorithm(){
-			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
-				activityBoundedConfidence[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
-				activityUnboundedConfidence[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
-			}
-		}
-		
 		@Override
 		public void run() {
 			
-			double[] accelFeatures = new double[3];
-			Accel.getFeatures(accelFeatures);
+			double[] accelFeatures = Accel.getFeatures();
 			Accel.clearAccelList();
-			
 			WiFi.scan();
 			
 			// Posterior prob from accelerometer
@@ -166,102 +156,137 @@ public class SensorProcessor {
 			double[][] accel_debug_unbounded = new double[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM];
 			double[] accel_post_bounded = new double[Global.ACTIVITY_NUM];
 			double[] accel_post_unbounded = new double[Global.ACTIVITY_NUM];
+			
 			getAccelFeaturePostProb(accelFeatures, accel_debug_bounded, accel_debug_unbounded, accel_post_bounded, accel_post_unbounded);
+			int accel_prediction = getPrediction(accel_post_bounded);
 			
-			
+			System.out.print("\nAccel- ");
+			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				System.out.print(accel_post_bounded[i] + ", ");
+			}
 		
 			/**
 			System.out.println(accelFeatures[0] + "," + accelFeatures[1]+ ","+ accelFeatures[2]);
 			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
-					System.out.println("Activity:" + i + ": unbounded:" + accel_debug_unbounded[i][0] + ", " + accel_debug_unbounded[i][1] + ", "+ accel_debug_unbounded[i][2]);
+					System.out.println("Accel - Activity:" + i + ": unbounded:" + accel_debug_unbounded[i][0] + ", " + accel_debug_unbounded[i][1] + ", "+ accel_debug_unbounded[i][2]);
 			}
 			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
-					System.out.println("Activity:" + i + ": bounded:" + accel_debug_bounded[i][0] + ", " + accel_debug_bounded[i][1] + ", "+ accel_debug_bounded[i][2]);
+					System.out.println("Accel - Activity:" + i + ": bounded:" + accel_debug_bounded[i][0] + ", " + accel_debug_bounded[i][1] + ", "+ accel_debug_bounded[i][2]);
 			}
 			**/
 			
-			
-			// Posterior prob from accelerometer WiFi
+			// Posterior prob from WiFi
 			double wifiFeature = WiFi.getFeature();
 			double[] wifi_post_bounded = new double[Global.ACTIVITY_NUM];
 			double[] wifi_post_unbounded = new double[Global.ACTIVITY_NUM];
 			
-			if (wifiFeature != Global.INVALID_FEATURE){
-				getPostProb(wifiKdeEstimator, wifiFeature, wifi_post_bounded, wifi_post_unbounded);
-			}else{
-				for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
-					wifi_post_bounded[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
-					wifi_post_unbounded[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
-				}
+			getPostProb(wifiKdeEstimator, wifiFeature, wifi_post_bounded, wifi_post_unbounded);
+			
+			System.out.print("\nWiFi- ");
+			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				System.out.print(wifi_post_bounded[i] + ", ");
 			}
 			
-			// Posterior prob from accelerometer GPS
+			/**
+			System.out.println("wifiFeature:" + wifiFeature);
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					System.out.println("WiFi - Activity:" + i + ": unbounded:" + wifi_post_unbounded[i]);
+			}
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					System.out.println("WiFi - Activity:" + i + ": bounded:" + wifi_post_bounded[i]);
+			}**/
+			
+			// Posterior prob from GPS
 			double gpsFeature = GPS.getFeature();
 			double[] gps_post_bounded = new double[Global.ACTIVITY_NUM];
 			double[] gps_post_unbounded = new double[Global.ACTIVITY_NUM];
 			
-			if (gpsFeature != Global.INVALID_FEATURE){
-				getPostProb(gpsKdeEstimator, gpsFeature, gps_post_bounded, gps_post_unbounded);
-			}else{
-				for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
-					gps_post_bounded[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
-					gps_post_unbounded[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
-					
-				}
-			}
+			getPostProb(gpsKdeEstimator, gpsFeature, gps_post_bounded, gps_post_unbounded);
 			
-			
-			// Soft voting
-			double[] combined_bounded_post_prob = new double[Global.ACTIVITY_NUM]; 
-			double[] combined_unbounded_post_prob = new double[Global.ACTIVITY_NUM]; 
-			double unbounded_denominator = 0;
-			double bounded_denominator = 0;
-			for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
-				combined_bounded_post_prob[i] = accel_post_bounded[i] * wifi_post_bounded[i] * gps_post_bounded[i];
-				combined_unbounded_post_prob[i] = accel_post_unbounded[i] * wifi_post_unbounded[i] * gps_post_unbounded[i];
-				bounded_denominator += combined_bounded_post_prob[i];
-				unbounded_denominator += combined_unbounded_post_prob[i];
-			}
+			System.out.print("\nGPS- ");
 			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
-				combined_bounded_post_prob[i] /= bounded_denominator;
-				combined_unbounded_post_prob[i] /= unbounded_denominator;
+				System.out.print(gps_post_bounded[i] + ", ");
 			}
 			
+			
+			// Ada makes the prediction, adaptive sensing
+			double[] curPostProb = new double[Global.ACTIVITY_NUM];
+			if(accel_prediction == Global.STATIC || accel_prediction == Global.WALKING || accel_prediction == Global.RUNNING){ 
+				// No need for soft voting, trust accelerometer
+				WiFi.stop();
+				GPS.stop();
+				
+				curPostProb = accel_post_bounded;
+				
+			}else{
+				// Combine results from sensors
+				
+				// Soft voting
+				WiFi.start();
+				GPS.start(latency);
+				double[] combined_bounded_post_prob = new double[Global.ACTIVITY_NUM]; 
+				double[] combined_unbounded_post_prob = new double[Global.ACTIVITY_NUM]; 
+				double unbounded_denominator = 0;
+				double bounded_denominator = 0;
+				for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					combined_bounded_post_prob[i] = accel_post_bounded[i] * wifi_post_bounded[i] * gps_post_bounded[i];
+					combined_unbounded_post_prob[i] = accel_post_unbounded[i] * wifi_post_unbounded[i] * gps_post_unbounded[i];
+					bounded_denominator += combined_bounded_post_prob[i];
+					unbounded_denominator += combined_unbounded_post_prob[i];
+				}
+				for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					combined_bounded_post_prob[i] /= bounded_denominator;
+					combined_unbounded_post_prob[i] /= unbounded_denominator;
+				}
+				System.out.print("\nsoft voting- ");
+				for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					System.out.print(combined_bounded_post_prob[i] + ", ");
+				}
+				curPostProb = combined_bounded_post_prob;	
+			}
+
 			
 			// EWMA smoothing
-			unbounded_denominator = 0;
-			bounded_denominator = 0;
+			double bounded_denominator = 0.0;
 			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
-				activityBoundedConfidence[i] = Global.EWMA_ALPHA * combined_bounded_post_prob[i] + (1-Global.EWMA_ALPHA) * activityBoundedConfidence[i];
-				activityUnboundedConfidence[i] = Global.EWMA_ALPHA * combined_unbounded_post_prob[i] + (1-Global.EWMA_ALPHA) * activityUnboundedConfidence[i];
+				activityBoundedConfidence[i] = (Global.EWMA_ALPHA * curPostProb[i]) + ((1-Global.EWMA_ALPHA) * activityBoundedConfidence[i]);
 				bounded_denominator += activityBoundedConfidence[i];
-				unbounded_denominator += activityUnboundedConfidence[i];
+			}
+			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				activityBoundedConfidence[i] /= bounded_denominator;
 			}
 			
+			System.out.print("\nEWMA- ");
+			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+				System.out.print(activityBoundedConfidence[i] + ", ");
+			}	
+			int bounded_prediction = getPrediction(activityBoundedConfidence);
 			
-			//Maximum likelihood 
-			int bounded_prediction = 0;
-			int unbounded_prediction = 0;
-			double bounded_maxlikelihood  = activityBoundedConfidence[0];
-			double unbounded_maxlikelihood = activityUnboundedConfidence[0];
-			for(int i = 1; i < Global.ACTIVITY_NUM; ++i){
-				if (activityBoundedConfidence[i] > bounded_maxlikelihood){
-					bounded_prediction = i;
-					bounded_maxlikelihood = activityBoundedConfidence[i];
-				}
-				if (activityUnboundedConfidence[i] > unbounded_maxlikelihood){
-					unbounded_prediction = i;
-					unbounded_maxlikelihood = activityUnboundedConfidence[i];
-				}
-			}
-			
-			System.out.println("bounded: " + bounded_prediction + "\n"+ accel_post_bounded[0] + "," + accel_post_bounded[1] + "," +accel_post_bounded[2] + "," +accel_post_bounded[3] + "," +accel_post_bounded[4]);
-			System.out.println("unbounded: " + unbounded_prediction + "\n" + accel_post_unbounded[0] + "," + accel_post_unbounded[1] + "," +accel_post_unbounded[2] + "," +accel_post_unbounded[3] + "," +accel_post_unbounded[4]);
-			
-		 
+			System.out.println("\nbounded prediction: " + bounded_prediction );
 		}
+
 		
 		
+		public void normalize(double[] unNormalizedArr, double[] normalizedArr){
+			
+			
+		}
+		/**
+		 * Get the maximum likelihood prediction
+		 * @param postProb 
+		 * @return prediction
+		 */
+		public int getPrediction(double[] postProb){
+			int prediction = 0;
+			double max = postProb[0];
+			for(int i = 1; i < postProb.length; ++i){
+				if(postProb[i] > max){
+					max = postProb[i];
+					prediction = i;
+				}
+			}
+			return prediction;
+		}
 		
 		/**
 		 * KDE evaluation for single feature sensors
@@ -271,6 +296,14 @@ public class SensorProcessor {
 		 * @param post_unbounded
 		 */
 		public void getPostProb(KDE[] kdeEstimator, double featureValue, double[] post_bounded, double[] post_unbounded){
+			if(featureValue == Global.INVALID_FEATURE){
+				for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					post_bounded[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
+					post_unbounded[i] = 1 / (Global.ACTIVITY_NUM * 1.0);
+					
+				}
+				return;
+			}
 			double unbounded_denominator = 0;
 			double bounded_denominator = 0;
 			
@@ -291,6 +324,26 @@ public class SensorProcessor {
 		}
 		
 		public void getAccelFeaturePostProb(double[] accelFeatures, double[][] accel_debug_bounded, double[][] accel_debug_unbounded, double[] accel_post_bounded, double[] accel_post_unbounded){
+			boolean isValid = true;
+			
+			for(int i = 0; i < accelFeatures.length; ++i){
+				if (accelFeatures[i] == Global.INVALID_FEATURE){
+					isValid = false;
+					break;
+				}
+			}
+			if(!isValid){
+				for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+					for(int j = 0; j < Global.ACCEL_FEATURE_NUM; ++j){
+						accel_debug_bounded[i][j] = 1/ (Global.ACTIVITY_NUM * 1.0);
+						accel_debug_unbounded[i][j] = 1/ (Global.ACTIVITY_NUM * 1.0);
+					}
+					accel_post_bounded[i] = 1/ (Global.ACTIVITY_NUM * 1.0);
+					accel_post_unbounded[i] = 1/ (Global.ACTIVITY_NUM * 1.0);
+				}
+				return;
+			}
+			
 			double unbounded_denominator = 0;
 			double bounded_denominator = 0;
 			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){

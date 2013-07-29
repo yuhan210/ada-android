@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
+import android.R.bool;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -18,7 +19,8 @@ public class WiFi {
 	private static WifiManager wifiManager;
 	private static WifiReceiver wifiReceiver = new WifiReceiver();
 	private static List<ArrayList<ScanResult>> wifiList = new ArrayList<ArrayList<ScanResult>>(Global.LOOKBACK_NUM);
-	private static double aveDistance = 0.0;
+	private static double aveDistance = Global.INVALID_FEATURE;
+	private static int listSize = 0;
 	
 	public static void init(){
 		wifiManager = (WifiManager)Global.context.getSystemService(Context.WIFI_SERVICE);
@@ -35,6 +37,7 @@ public class WiFi {
 	
 	public static void stop()
 	{
+		listSize = 0;
 		Global.context.unregisterReceiver(wifiReceiver);
 	}
 	
@@ -46,21 +49,26 @@ public class WiFi {
 	  	 public void onReceive(Context c, Intent intent) {  		
 	  		ArrayList<ScanResult> curScanResult = (ArrayList<ScanResult>) wifiManager.getScanResults();
 	  		
-	  		if (wifiList.size() == Global.LOOKBACK_NUM){
+	  		if(listSize == Global.LOOKBACK_NUM){
 	  			wifiList.remove(0);
+	  			--listSize;
 	  		}
 	  		
-	  		System.out.println("wifi received + " + curScanResult.size());
+	  		/**System.out.println("wifi received + " + curScanResult.size());
 	  		for (int i = 0; i < curScanResult.size(); i++)
 	    	{
 	    		System.out.println(curScanResult.get(i).SSID + "," + curScanResult.get(i).BSSID + "," + curScanResult.get(i).level);
-	    	}
+	    	}**/
+	  		
 	  		wifiList.add(curScanResult);
-	  		updateDistance();
+	  		++listSize;
+	  		if(listSize == Global.LOOKBACK_NUM){
+	  			updateDistance(listSize);
+	  		}
 		 }
 	}
 	
-	private static double updateDistance(){
+	private static double updateDistance(int scanNum){
 		
 		LinkedHashSet<String> aPDimHashSet = new LinkedHashSet<String>();
 		
@@ -70,23 +78,22 @@ public class WiFi {
 					aPDimHashSet.add(wifiList.get(i).get(j).BSSID);						
 				}				
 			}
-			
-			int scanNum = wifiList.size();
+
 			int obAPNum = aPDimHashSet.size();
-			List<String> apDimlist = new ArrayList<String>(aPDimHashSet);			
+			List<String> apDimlist = new ArrayList<String>(aPDimHashSet);
+			
 			double[][] scanVect = new double[scanNum][obAPNum];
 			for(int i = 0; i < scanNum; ++i){
 				List<ScanResult> scanList = wifiList.get(i);				
 				for(int j = 0; j < obAPNum; ++j){
 					String macAdd = apDimlist.get(j);
-					
 					for(int k = 0; k < scanList.size(); ++k){					
-						if(scanList.get(k).BSSID == macAdd){
-							scanVect[i][j] = scanList.get(k).level * 1.0;								
-						}else{
-							scanVect[i][j] = 0.0; 								
+						if(scanList.get(k).BSSID.equals(macAdd)){
+							scanVect[i][j] = (double)scanList.get(k).level;
+							break;
 						}
-					}					
+						scanVect[i][j] = 0.0;
+					}
 				}
 			}
 		
@@ -112,7 +119,7 @@ public class WiFi {
 			return aveDistance;
 		}
 		
-		aveDistance =  -1;
+		aveDistance =  Global.INVALID_FEATURE;
 		return aveDistance;
 	}
 	

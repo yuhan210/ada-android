@@ -3,6 +3,7 @@ package edu.mit.csail.sensors;
 import java.util.ArrayList;
 
 import edu.mit.csail.ada.Global;
+import android.R.integer;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -18,17 +19,20 @@ public class Accel {
 	private static Sensor accelerometer;
 	private static AcclListener accelListerner = new AcclListener();
 	private static ArrayList<Double> accelList = new ArrayList<Double>();
+	private static double[] accelFeatures = new double[Global.ACCEL_FEATURE_NUM];
 	
 	public static void init()
     {	
 		sensorManager = (SensorManager)Global.context.getSystemService(Context.SENSOR_SERVICE);
 		accelerometer = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER).get(0);
-		
+		for(int i = 0; i < Global.ACCEL_FEATURE_NUM; ++i){
+			accelFeatures[i] = Global.INVALID_FEATURE;
+		}
     }
 	
 	public static void start(int period){
-		sensorManager.registerListener(accelListerner, accelerometer, period); 
 		clearAccelList();
+		sensorManager.registerListener(accelListerner, accelerometer, period); 
 	}
 	
 	/**
@@ -38,7 +42,7 @@ public class Accel {
 	 */
 	private static class AcclListener implements SensorEventListener 
     {
-		int accuracy = 0;
+		
 		public void onSensorChanged(SensorEvent event)
         {   
 			float x = event.values[0];
@@ -49,7 +53,6 @@ public class Accel {
         }
         public void onAccuracyChanged(Sensor sensor, int accuracy) 
         {
-        	this.accuracy = accuracy;
         }
     }
 	
@@ -57,10 +60,16 @@ public class Accel {
 	 * Extract accelerometer features (mean, std, peak freq) from the current accelerometer window (accelList)
 	 * @param f an array contains three accelerometer features
 	 */
-	public static void getFeatures(double[] f){
+	public static double[] getFeatures(){
+		
+		int N = accelList.size();
+		if (N == 0){
+			return accelFeatures;
+		}
+		
 		double sum = 0.0;
 		double sqSum = 0.0;
-		int N = accelList.size();
+		
 		
 		for (int i = 0; i < accelList.size(); ++i){
 			double magItem = accelList.get(i);
@@ -81,9 +90,10 @@ public class Accel {
 			}
 		}
 		
-		f[0] = sum/(N * 1.0);//mean
-		f[1] = Math.sqrt( (sqSum - (sum * sum)/(N * 1.0))/((N * 1.0)-1.0));//standard dev
-		f[2] = peakPowerLocation/(N * 1.0) * currentWindowFs; //peak freq
+		accelFeatures[0] = sum/(N * 1.0);//mean
+		accelFeatures[1] = Math.sqrt( (sqSum - (sum * sum)/(N * 1.0))/((N * 1.0)-1.0));//standard dev
+		accelFeatures[2] = peakPowerLocation/(N * 1.0) * currentWindowFs; //peak freq
+		return accelFeatures;
 	}
 	
 	/**

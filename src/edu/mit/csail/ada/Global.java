@@ -7,7 +7,7 @@ public class Global {
 	public static final int ACTIVITY_NUM = 5;
 	public static final int ACCEL_FEATURE_NUM = 3;
 	public static final String accelTrainingDataFilename = "accel_train";
-	public static final String wifiTrainingDataFilename = "wifi_train";
+	public static final String wifiTrainingDataFilename = "wifi_15sec_train";
 	public static final String gpsTrainingDataFilename = "gps_train";
 	
 	public static final int ACCEL_TIMEWINDOW_SEC = 5; //SEC

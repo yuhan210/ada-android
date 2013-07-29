@@ -40,7 +40,7 @@ public class AdaService extends Service{
 	
 		parseUserInputs();
 		initSensors();
-		p = new SensorProcessor(5);
+		p = new SensorProcessor(15);
 	}
 	/**
 	 * Determines the set of sensors to use; and their sampling rate
