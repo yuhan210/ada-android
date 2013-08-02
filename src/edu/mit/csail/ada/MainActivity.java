@@ -1,5 +1,8 @@
 package edu.mit.csail.ada;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import edu.mit.csail.ada_lib.R;
 
 import android.os.Bundle;
@@ -12,11 +15,22 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.view.Menu;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
 	public static final String TAG = "Main.java";
 	
+	/** UI Variables**/
+	private Spinner gt_spinner;
+	private Button btnSubmit;
+	private List<String> spinList = new ArrayList<String>();
 	/** Variables handling activity-service connection **/
 	private Messenger mService = null;
 	private boolean mIsBound;
@@ -44,6 +58,9 @@ public class MainActivity extends Activity {
 		
 		// initialize
 		Global.startTime = System.nanoTime();
+		addItemsOnSpinner();
+		addListenerOnButton();
+		addListenerOnSpinnerItemSelection();
 		doStartService();       
         doBindService();
 		Global.setContext(this);
@@ -92,8 +109,56 @@ public class MainActivity extends Activity {
 		doStopService();
 		System.out.println("destroyed");
 	}
-	
+	  
+	 // add items into spinner dynamically
+	  public void addItemsOnSpinner() {	 
+		gt_spinner = (Spinner) findViewById(R.id.gt_spinner);
+		spinList.add("Static");
+		spinList.add("Walking");
+		spinList.add("Running");
+		spinList.add("Biking");
+		spinList.add("Driving");
+		
+		ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, spinList);
+		dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		gt_spinner.setAdapter(dataAdapter);
+	  }
 	 
+	  
+	  public void addListenerOnSpinnerItemSelection() {
+		gt_spinner = (Spinner) findViewById(R.id.gt_spinner);
+		gt_spinner.setOnItemSelectedListener(new ItemSelectedListener());
+	  }
+	 
+	  // get the selected dropdown list value
+	  public void addListenerOnButton() {
+	 
+		gt_spinner = (Spinner) findViewById(R.id.gt_spinner);
+		btnSubmit = (Button) findViewById(R.id.btnSubmit);
+		btnSubmit.setOnClickListener(new OnClickListener() {
+		  @Override
+		  public void onClick(View v) {
+	 
+		    Toast.makeText(Global.context,"OnClickListener : " +  "\nSpinner: "+ String.valueOf(gt_spinner.getSelectedItem()),
+			Toast.LENGTH_SHORT).show();
+		  }
+	 
+		});
+	  }
+	class ItemSelectedListener implements OnItemSelectedListener {  
+		@Override
+		public void onItemSelected(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
+			//Toast.makeText(Global.context, 
+			//		"OnItemSelectedListener : " + spinList.get(arg2).toString(),
+			//		Toast.LENGTH_SHORT).show();	
+		}
+		@Override
+		public void onNothingSelected(AdapterView<?> arg0) {
+			// TODO Auto-generated method stub
+			
+		}
+	}
+	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.

@@ -12,10 +12,6 @@ import android.widget.Toast;
 public class AdaService extends Service{
 
 	private final Messenger mMessenger = new Messenger(new IncomingHandler());
-	
-	/** Sensors*/
-	private Accel accel = new Accel();
-	
 	private SensorProcessor p;
 	
 	@Override
@@ -37,24 +33,33 @@ public class AdaService extends Service{
 	}
 	
 	public void onCreate(){
-	
-		parseUserInputs();
-		initSensors();
-		p = new SensorProcessor(15);
+		boolean[] registeredActivity = new boolean[Global.ACTIVITY_NUM];
+		for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
+			registeredActivity[i] = false;
+		}
+		
+		int latencyInSec = parseUserInputs(registeredActivity);
+		p = new SensorProcessor(latencyInSec, 1);
+		p.run();
 	}
-	/**
-	 * Determines the set of sensors to use; and their sampling rate
-	 */
-	public static void initSensors(){}
+	
 	
 	/**
-	 * Parses subscriptions and responsiveness from user
+	 * Parses subscriptions and responsiveness from user and returns the latencyInSec
 	 */
-	public static void parseUserInputs(){}
+	public static int parseUserInputs(boolean[] registeredActivity){
+		
+		//TODO: Parse real input
+		for(int i = 0; i < registeredActivity.length; ++i){
+			registeredActivity[i] = true;
+		}
+		return 1;
+	}
 
 	
 	public void onDestroy() 
     {
+		System.out.println("onDestroy()");
 		p.stop();
 		Toast.makeText(this, "Ada service stopped", Toast.LENGTH_SHORT).show();
     }

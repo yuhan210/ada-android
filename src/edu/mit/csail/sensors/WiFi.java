@@ -21,14 +21,20 @@ public class WiFi {
 	private static List<ArrayList<ScanResult>> wifiList = new ArrayList<ArrayList<ScanResult>>(Global.LOOKBACK_NUM);
 	private static double aveDistance = Global.INVALID_FEATURE;
 	private static int listSize = 0;
+	private static boolean isRegistered = false;
+	
 	
 	public static void init(){
 		wifiManager = (WifiManager)Global.context.getSystemService(Context.WIFI_SERVICE);
-		Global.context.registerReceiver(wifiReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
 	}
 	
 	public static void start(){
-		wifiManager.startScan();
+		
+		listSize = 0;
+		if (!isRegistered){
+			Global.context.registerReceiver(wifiReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+			isRegistered = true;
+		}
 	}
 	
 	public static void scan(){
@@ -38,7 +44,10 @@ public class WiFi {
 	public static void stop()
 	{
 		listSize = 0;
-		Global.context.unregisterReceiver(wifiReceiver);
+		if (isRegistered){
+			Global.context.unregisterReceiver(wifiReceiver);
+			isRegistered = false;
+		}
 	}
 	
 	public static double getFeature(){

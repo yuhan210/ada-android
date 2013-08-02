@@ -25,6 +25,7 @@ public class GPS {
 	
 	public static void start(int sampling_interval_sec){
 		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, sampling_interval_sec * 1000, 0, locationListener);
+		//locationManager.
 	}
 	
 	static class GPSLocationListener implements LocationListener 
