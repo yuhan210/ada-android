@@ -20,6 +20,7 @@ public class Accel {
 	private static AcclListener accelListerner = new AcclListener();
 	private static ArrayList<Double> accelList = new ArrayList<Double>();
 	private static double[] accelFeatures = new double[Global.ACCEL_FEATURE_NUM];
+	private static int _period = -1;
 	
 	public static void init()
     {	
@@ -31,8 +32,17 @@ public class Accel {
     }
 	
 	public static void start(int period){
+		_period = period;
 		clearAccelList();
 		sensorManager.registerListener(accelListerner, accelerometer, period); 
+	}
+	
+	public static void changeSampleRate(int period){
+		if (_period != period){
+			sensorManager.unregisterListener(accelListerner);
+			sensorManager.registerListener(accelListerner, accelerometer, period);
+			_period = period;
+		}
 	}
 	
 	/**
@@ -56,11 +66,24 @@ public class Accel {
         }
     }
 	
+	public static AccelFeatureItem getFeatures(){
+		
+		double[] accelFeatureArr = getFeaturesInArray();
+		for(int i = 0; i < accelFeatureArr.length; ++i){
+			if(accelFeatureArr[i] == Global.INVALID_FEATURE){
+				return null;
+			}
+		}
+		
+		return new AccelFeatureItem(System.nanoTime(), accelFeatureArr[0], accelFeatureArr[1], accelFeatureArr[2]);
+	}
+	
 	/**
 	 * Extract accelerometer features (mean, std, peak freq) from the current accelerometer window (accelList)
 	 * @param f an array contains three accelerometer features
 	 */
-	public static double[] getFeatures(){
+	public static double[] getFeaturesInArray(){
+		
 		
 		int N = accelList.size();
 		if (N == 0){

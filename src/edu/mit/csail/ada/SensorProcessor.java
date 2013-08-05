@@ -6,11 +6,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import edu.mit.csail.kde.KDE;
 import edu.mit.csail.sensors.Accel;
+import edu.mit.csail.sensors.AccelFeatureItem;
 import edu.mit.csail.sensors.GPS;
 import edu.mit.csail.sensors.WiFi;
 
@@ -29,7 +28,10 @@ import android.util.Log;
 public class SensorProcessor {
 	
 	private int latency;// sec
-	private Handler mHandler = new Handler();
+	private Handler algoHandler = new Handler();
+	private Handler accelHandler = new Handler();
+	private List<AccelFeatureItem> accelFeatureList = new ArrayList<AccelFeatureItem>();
+	private int accelUpdateInterval = 5; // sec
 	
 	/** The array used to store kde estimators (one for each activity)*/
 	private KDE[][] accelKdeEstimators; //= new KDE[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM]; 
@@ -38,6 +40,9 @@ public class SensorProcessor {
 	
 	double[] activityBoundedConfidence = new double[Global.ACTIVITY_NUM];
 	double[] activityUnboundedConfidence = new double[Global.ACTIVITY_NUM];
+	
+	// TO-DO: Set accel_only value based on user input
+	private boolean accel_only = false;
 	
 	/** State machine - state 0: nothing, state 1: accelerometer only, state 2: accel + wifi, state 3: accel + gps**/
 	private int state = 0;
@@ -70,13 +75,16 @@ public class SensorProcessor {
 		WiFi.start();
 		GPS.start(latency);
 		
-		mHandler.removeCallbacks(fusionAlgoTask);
-        mHandler.postDelayed(fusionAlgoTask, 0);
+		accelHandler.removeCallbacks(accelTask);
+		accelHandler.postDelayed(accelTask, 0);
+		algoHandler.removeCallbacks(fusionAlgoTask);
+        algoHandler.postDelayed(fusionAlgoTask, 0);
 		//algoTimer.schedule(fusionAlgo, 0, latency * 1000);
 	}
 	
 	public void stop(){
-		mHandler.removeCallbacks(fusionAlgoTask);
+		accelHandler.removeCallbacks(accelTask);
+		algoHandler.removeCallbacks(fusionAlgoTask);
 		Accel.stop();
 		WiFi.stop();
 		GPS.stop();
@@ -138,13 +146,62 @@ public class SensorProcessor {
 		}
 	}
 	
+	private Runnable accelTask = new Runnable(){
+
+		@Override
+		public void run() {
+			
+			accelHandler.postDelayed(accelTask, accelUpdateInterval * 1000);
+			accelFeatureList.add(Accel.getFeatures());
+			double[] adaptAccelFeatures = Accel.getFeaturesInArray();
+			Accel.clearAccelList();
+			
+			// Adapt accelerometer sampling rate
+			boolean ramp_up = false;
+			for(int i = 0; i < adaptAccelFeatures.length; ++i){
+				if(adaptAccelFeatures[i] >= 0.2 && adaptAccelFeatures[i] <= 0.8){
+					ramp_up = true;
+					break;
+				}
+			}
+			if(ramp_up){
+				Accel.changeSampleRate(SensorManager.SENSOR_DELAY_UI);
+			}else{
+				Accel.changeSampleRate(SensorManager.SENSOR_DELAY_NORMAL);
+			}
+			
+		}
+	
+	};
 	private Runnable fusionAlgoTask = new Runnable() {
 		@Override
 		public void run() {
-			mHandler.postDelayed(fusionAlgoTask, latency * 1000);
-			double[] accelFeatures = Accel.getFeatures();
-			Accel.clearAccelList();
+			algoHandler.postDelayed(fusionAlgoTask, latency * 1000);
+			long currentTime = System.nanoTime();
 			WiFi.scan();
+			
+			/** Process accelerometer data **/
+			// Keep recent accelFeatureItems and compute their average
+			double[] aveAccelFeatures = new double[Global.ACCEL_FEATURE_NUM];
+			for(int i = 0; i < Global.ACCEL_FEATURE_NUM; ++i){
+				aveAccelFeatures[i] = 0.0;
+			}
+			int counter = 0;
+			for(int i = 0; i < accelFeatureList.size(); ++i){
+				if((currentTime - accelFeatureList.get(i).time) > latency * 1000000000){
+					accelFeatureList.remove(i);
+				}else{
+					aveAccelFeatures[0] += accelFeatureList.get(i).mean;
+					aveAccelFeatures[1] += accelFeatureList.get(i).std;
+					aveAccelFeatures[2] += accelFeatureList.get(i).peakFreq;
+					++counter;
+					break;
+				}
+			}
+			for(int i = 0; i > counter; ++i){
+				aveAccelFeatures[i] /= (counter * 1.0);
+			}
+			
 			
 			// Posterior prob from accelerometer
 			double[][] accel_debug_bounded = new double[Global.ACTIVITY_NUM][Global.ACCEL_FEATURE_NUM];
@@ -152,7 +209,7 @@ public class SensorProcessor {
 			double[] accel_post_bounded = new double[Global.ACTIVITY_NUM];
 			double[] accel_post_unbounded = new double[Global.ACTIVITY_NUM];
 			
-			getAccelFeaturePostProb(accelFeatures, accel_debug_bounded, accel_debug_unbounded, accel_post_bounded, accel_post_unbounded);
+			getAccelFeaturePostProb(aveAccelFeatures, accel_debug_bounded, accel_debug_unbounded, accel_post_bounded, accel_post_unbounded);
 			int accel_prediction = getPrediction(accel_post_bounded);
 			
 			System.out.print("\nAccel- ");
@@ -204,26 +261,17 @@ public class SensorProcessor {
 			}
 			
 			
-			// Ada makes the prediction, adaptive sensing
+			// Make the prediction and adapt the sensors
 			double[] curPostProb = new double[Global.ACTIVITY_NUM];
 			if(accel_prediction == Global.STATIC || accel_prediction == Global.WALKING || accel_prediction == Global.RUNNING){ 
 				
 				// No need for soft voting, trust accelerometer
-				if (state != 1){
-					WiFi.stop();
-					GPS.stop();
-					state = 1;
-				}
-				
 				curPostProb = accel_post_bounded;
 				
 			}else{
 				
-				
-				// Combine results from sensors
+				// Combine results from other sensors
 				// Soft voting
-				WiFi.start();
-				GPS.start(latency);
 				double[] combined_bounded_post_prob = new double[Global.ACTIVITY_NUM]; 
 				double[] combined_unbounded_post_prob = new double[Global.ACTIVITY_NUM]; 
 				double unbounded_denominator = 0;
@@ -242,11 +290,11 @@ public class SensorProcessor {
 				for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
 					System.out.print(combined_bounded_post_prob[i] + ", ");
 				}
-				curPostProb = combined_bounded_post_prob;	
+				curPostProb = combined_bounded_post_prob;
 			}
 
 			
-			// EWMA smoothing
+			// Finally - EWMA smoothing
 			double bounded_denominator = 0.0;
 			for(int i = 0; i < Global.ACTIVITY_NUM; ++i){
 				activityBoundedConfidence[i] = (Global.EWMA_ALPHA * curPostProb[i]) + ((1-Global.EWMA_ALPHA) * activityBoundedConfidence[i]);
@@ -263,6 +311,36 @@ public class SensorProcessor {
 			int bounded_prediction = getPrediction(activityBoundedConfidence);
 			
 			System.out.println("\nbounded prediction: " + bounded_prediction );
+			
+			
+			// Adapt sensors
+			if(!accel_only){
+				if(accel_prediction == Global.STATIC || accel_prediction == Global.WALKING || accel_prediction == Global.RUNNING){
+					// Stop other sensors
+					if(WiFi.isWorking()){
+						WiFi.stop();
+					}
+					if(GPS.isWorking()){
+						GPS.stop();
+					}
+				}else{
+					
+					// Accel is uncertain 
+					// Turn on GPS when WiFi is low (but still keep sampling WiFi)
+					// Turn off GPS when WiFi is high
+					if (!WiFi.isWorking()){
+						WiFi.start();
+					}else if(){ 
+						
+					}else{ // turn on GPS
+						
+					}
+				
+					
+				}
+			}
+				
+			
 
 		}
 		

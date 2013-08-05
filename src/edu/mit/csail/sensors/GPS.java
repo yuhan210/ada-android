@@ -17,6 +17,7 @@ public class GPS {
     private static List<Location> locList = new ArrayList<Location>(Global.LOOKBACK_NUM);
     private static double aveSpeed = Global.INVALID_FEATURE;
     private static int listSize = 0;
+    private static boolean isWorking = false;
     
 	public static void init(){
 		locationManager = (LocationManager)Global.context.getSystemService(Context.LOCATION_SERVICE);
@@ -24,8 +25,13 @@ public class GPS {
 	}
 	
 	public static void start(int sampling_interval_sec){
+		isWorking = true;
 		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, sampling_interval_sec * 1000, 0, locationListener);
 		//locationManager.
+	}
+	
+	public static boolean isWorking(){
+		return isWorking;
 	}
 	
 	static class GPSLocationListener implements LocationListener 
@@ -71,6 +77,7 @@ public class GPS {
 	}
 	
 	public static void stop(){
+		isWorking = false;
 		listSize = 0;
 		locationManager.removeUpdates(locationListener);
 	}

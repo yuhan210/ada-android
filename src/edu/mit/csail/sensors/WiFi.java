@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-import android.R.bool;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -22,6 +21,7 @@ public class WiFi {
 	private static double aveDistance = Global.INVALID_FEATURE;
 	private static int listSize = 0;
 	private static boolean isRegistered = false;
+	private static boolean isWorking = false;
 	
 	
 	public static void init(){
@@ -29,7 +29,7 @@ public class WiFi {
 	}
 	
 	public static void start(){
-		
+		isWorking = true;
 		listSize = 0;
 		if (!isRegistered){
 			Global.context.registerReceiver(wifiReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
@@ -41,8 +41,13 @@ public class WiFi {
 		wifiManager.startScan();
 	}
 	
+	public static boolean isWorking(){
+		return isWorking;
+	}
+	
 	public static void stop()
 	{
+		isWorking = false;
 		listSize = 0;
 		if (isRegistered){
 			Global.context.unregisterReceiver(wifiReceiver);
