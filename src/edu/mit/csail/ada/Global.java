@@ -24,11 +24,29 @@ public class Global {
 	public static final int INVALID_FEATURE = -1;
 	public static long startTime = 0;
 	public static Context context;
-	
-	
 	public static final double EWMA_ALPHA = 0.8;
+	
+	
+	public static int gt = 0;
 	public static void setContext(Context ctx){
 		context = ctx;
 	}
-
+	public static void setGroundTruth(String activity){
+		if (activity.equals("Static")){
+			gt = STATIC;
+		}else if(activity.equals("Walking")){
+			gt = WALKING;
+		}else if(activity.equals("Running")){
+			gt = RUNNING;
+		}else if(activity.equals("Biking")){
+			gt = BIKING;
+		}else if(activity.equals("Driving")){
+			gt = DRIVING;
+		}else{
+			System.exit(-1);
+		}
+	}
+	public static int getGroundTruth(){
+		return gt;
+	}
 }

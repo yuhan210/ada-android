@@ -1,6 +1,5 @@
 package edu.mit.csail.ada;
 
-import edu.mit.csail.sensors.Accel;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Handler;
@@ -39,7 +38,7 @@ public class AdaService extends Service{
 		}
 		
 		int latencyInSec = parseUserInputs(registeredActivity);
-		p = new SensorProcessor(latencyInSec, 1);
+		p = new SensorProcessor(latencyInSec, 2);
 		p.run();
 	}
 	

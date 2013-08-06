@@ -138,7 +138,7 @@ public class MainActivity extends Activity {
 		btnSubmit.setOnClickListener(new OnClickListener() {
 		  @Override
 		  public void onClick(View v) {
-	 
+			setGroundTruth(String.valueOf(gt_spinner.getSelectedItem());  
 		    Toast.makeText(Global.context,"OnClickListener : " +  "\nSpinner: "+ String.valueOf(gt_spinner.getSelectedItem()),
 			Toast.LENGTH_SHORT).show();
 		  }
@@ -148,6 +148,7 @@ public class MainActivity extends Activity {
 	class ItemSelectedListener implements OnItemSelectedListener {  
 		@Override
 		public void onItemSelected(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
+			
 			//Toast.makeText(Global.context, 
 			//		"OnItemSelectedListener : " + spinList.get(arg2).toString(),
 			//		Toast.LENGTH_SHORT).show();	

@@ -44,7 +44,7 @@ public class SensorProcessor {
 	// TO-DO: Set accel_only value based on user input
 	private boolean accel_only = false;
 	
-	/** State machine - state 0: nothing, state 1: accelerometer only, state 2: accel + wifi, state 3: accel + gps**/
+	/** State machine - state 0: nothing, state 1: accelerometer only, state 2: accel + wifi, state 3: accel + gps + wifi monitoring**/
 	private int state = 0;
 	
 	public SensorProcessor(int latency, int state){
@@ -68,6 +68,7 @@ public class SensorProcessor {
 		Accel.init();
 		WiFi.init();
 		GPS.init();
+		Debug.init();
 	}
 	
 	public void run(){
@@ -88,6 +89,7 @@ public class SensorProcessor {
 		Accel.stop();
 		WiFi.stop();
 		GPS.stop();
+		Debug.stop();
 	}
 	
 	/**
@@ -312,11 +314,15 @@ public class SensorProcessor {
 			
 			System.out.println("\nbounded prediction: " + bounded_prediction );
 			
+			// Write debug message to file
+			Debug.logPrediction(Global.getGroundTruth(), bounded_prediction, accel_post_bounded , wifi_post_bounded, gps_post_bounded,
+					curPostProb, activityBoundedConfidence, aveAccelFeatures, wifiFeature, gpsFeature, state);
+			
 			
 			// Adapt sensors
 			if(!accel_only){
 				if(accel_prediction == Global.STATIC || accel_prediction == Global.WALKING || accel_prediction == Global.RUNNING){
-					
+					state = 1;
 					// Stop other sensors
 					if(WiFi.isWorking()){
 						WiFi.stop();
@@ -331,13 +337,16 @@ public class SensorProcessor {
 					// Turn off GPS when WiFi is high
 					if (!WiFi.isWorking()){
 						// WiFi is off, turn it on
+						state = 2;
 						WiFi.start();
 					}else if(WiFi.isDensityHigh()){ 
 						// turn off GPS
+						state = 2;
 						if (GPS.isWorking())
 							GPS.stop();
 						
 					}else{ // turn on GPS
+						state = 3;
 						if(!GPS.isWorking())
 							GPS.start(latency);
 					}
