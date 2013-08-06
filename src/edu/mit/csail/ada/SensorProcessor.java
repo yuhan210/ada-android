@@ -316,6 +316,7 @@ public class SensorProcessor {
 			// Adapt sensors
 			if(!accel_only){
 				if(accel_prediction == Global.STATIC || accel_prediction == Global.WALKING || accel_prediction == Global.RUNNING){
+					
 					// Stop other sensors
 					if(WiFi.isWorking()){
 						WiFi.stop();
@@ -329,19 +330,19 @@ public class SensorProcessor {
 					// Turn on GPS when WiFi is low (but still keep sampling WiFi)
 					// Turn off GPS when WiFi is high
 					if (!WiFi.isWorking()){
+						// WiFi is off, turn it on
 						WiFi.start();
-					}else if(){ 
+					}else if(WiFi.isDensityHigh()){ 
+						// turn off GPS
+						if (GPS.isWorking())
+							GPS.stop();
 						
 					}else{ // turn on GPS
-						
+						if(!GPS.isWorking())
+							GPS.start(latency);
 					}
-				
-					
 				}
 			}
-				
-			
-
 		}
 		
 		/**

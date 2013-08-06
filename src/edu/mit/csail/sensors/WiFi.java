@@ -82,6 +82,26 @@ public class WiFi {
 		 }
 	}
 	
+	public static boolean isDensityHigh(){
+		
+		if (wifiList.size() > 0){
+			// we have some wifi scans
+			
+			double aveApNum = 0.0;
+			for(int i = 0; i < wifiList.size(); ++i){
+				aveApNum += wifiList.get(i).size();
+			}
+			aveApNum /= (wifiList.size() * 1.0);
+			if(aveApNum > 1){
+				// the density is high
+				return true;
+			}else{ // density is low
+				return false;
+			}
+		}
+		// not enough sample, assuming the density is high
+		return true;
+	}
 	private static double updateDistance(int scanNum){
 		
 		LinkedHashSet<String> aPDimHashSet = new LinkedHashSet<String>();
