@@ -22,6 +22,8 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.Toast;
 import edu.mit.csail.ada_lib.R;
+import edu.mit.csail.google.ActivityRecognitionScan;
+
 
 public class MainActivity extends Activity {
 	public static final String TAG = "Main.java";
@@ -30,6 +32,9 @@ public class MainActivity extends Activity {
 	private Spinner gt_spinner;
 	private Button btnSubmit;
 	private List<String> spinList = new ArrayList<String>();
+	
+	
+	
 	/** Variables handling activity-service connection **/
 	private Messenger mService = null;
 	private boolean mIsBound;
@@ -64,7 +69,7 @@ public class MainActivity extends Activity {
 		doStartService();
 		doBindService();
 		Global.setContext(this);
-
+		new ActivityRecognitionScan(this).startActivityRecognitionScan();
 	}
 
 	private void doStartService() {

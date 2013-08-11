@@ -49,7 +49,7 @@ public class ActivityRecognitionScan implements
 
 	@Override
 	public void onConnectionFailed(ConnectionResult result) {
-		Log.d(TAG, "onConnectionFailed");
+		Log.d(TAG, "onConnectionFailed:" + result.toString());
 	}
 
 	/**

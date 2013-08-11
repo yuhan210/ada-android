@@ -16,20 +16,16 @@ public class ActivityRecognitionService extends IntentService {
 	}
 
 	/**
-	 * Google Play Services calls this once it has analysed the sensor data
+	 * Google Play Services calls this once it has analyzed the sensor data
 	 */
 	@Override
 	protected void onHandleIntent(Intent intent) {
 		if (ActivityRecognitionResult.hasResult(intent)) {
 			ActivityRecognitionResult result = ActivityRecognitionResult
 					.extractResult(intent);
+			System.out.println("Google Result:" + getFriendlyName(result.getMostProbableActivity()
+					.getType()) + ", " + result.toString());
 			
-			Log.d(TAG, "ActivityRecognitionResult: "
-					+ getFriendlyName(result.getMostProbableActivity()
-								.getType()));
-			Log.d(TAG, result.toString());
-		
-
 		}
 	}
 
