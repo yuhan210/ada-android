@@ -24,7 +24,7 @@ public class Global {
 	public static final int INVALID_FEATURE = -1;
 	public static long startTime = 0;
 	public static Context context;
-	public static final double EWMA_ALPHA = 0.8;
+	public static final double EWMA_ALPHA = 0.7;
 	
 	
 	public static int gt = 0;

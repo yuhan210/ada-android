@@ -4,12 +4,12 @@ package edu.mit.csail.sensors;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.mit.csail.ada.Global;
 import android.content.Context;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import edu.mit.csail.ada.Global;
 
 public class GPS {
 	private static LocationManager locationManager;

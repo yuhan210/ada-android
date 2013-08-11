@@ -1,6 +1,5 @@
 package edu.mit.csail.sensors;
 
-
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -49,6 +48,7 @@ public class WiFi {
 	{
 		isWorking = false;
 		listSize = 0;
+		
 		if (isRegistered){
 			Global.context.unregisterReceiver(wifiReceiver);
 			isRegistered = false;

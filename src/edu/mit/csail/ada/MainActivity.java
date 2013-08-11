@@ -3,17 +3,15 @@ package edu.mit.csail.ada;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.mit.csail.ada_lib.R;
-
+import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
-import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -23,6 +21,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.Toast;
+import edu.mit.csail.ada_lib.R;
 
 public class MainActivity extends Activity {
 	public static final String TAG = "Main.java";

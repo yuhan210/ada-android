@@ -2,12 +2,12 @@ package edu.mit.csail.sensors;
 
 import java.util.ArrayList;
 
-import edu.mit.csail.ada.Global;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import edu.mit.csail.ada.Global;
 
 /**
  * 

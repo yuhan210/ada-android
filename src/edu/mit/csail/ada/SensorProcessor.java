@@ -8,16 +8,15 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import android.content.res.AssetManager;
+import android.hardware.SensorManager;
+import android.os.Handler;
+import android.util.Log;
 import edu.mit.csail.kde.KDE;
 import edu.mit.csail.sensors.Accel;
 import edu.mit.csail.sensors.AccelFeatureItem;
 import edu.mit.csail.sensors.GPS;
 import edu.mit.csail.sensors.WiFi;
-
-import android.content.res.AssetManager;
-import android.hardware.SensorManager;
-import android.os.Handler;
-import android.util.Log;
 
 /**
  * 
@@ -176,7 +175,11 @@ public class SensorProcessor {
 					accel_debug_unbounded, accel_post_bounded,
 					accel_post_unbounded);
 
-			for (int i = 0; i < adaptAccelFeatures.length; ++i) {
+			//System.out.print("\nMicro Accel- ");
+			//for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
+			//	System.out.print(accel_post_bounded[i] + ", ");
+			//}
+			for (int i = 0; i < accel_post_bounded.length; ++i) {			
 				if (accel_post_bounded[i] >= 0.2
 						&& accel_post_bounded[i] <= 0.8) {
 					ramp_up = true;
@@ -198,7 +201,9 @@ public class SensorProcessor {
 		public void run() {
 			algoHandler.postDelayed(fusionAlgoTask, latencyInSec * 1000);
 			long currentTime = System.nanoTime();
-			WiFi.scan();
+			System.out.println(WiFi.isWorking());
+			if (WiFi.isWorking())
+				WiFi.scan();
 
 			/** Process accelerometer data **/
 			// Keep recent accelFeatureItems and compute their average
@@ -354,6 +359,7 @@ public class SensorProcessor {
 						|| accel_prediction == Global.WALKING
 						|| accel_prediction == Global.RUNNING) {
 					state = 1;
+					
 					// Stop other sensors
 					if (WiFi.isWorking()) {
 						WiFi.stop();

@@ -1,6 +1,5 @@
 package edu.mit.csail.kde;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
