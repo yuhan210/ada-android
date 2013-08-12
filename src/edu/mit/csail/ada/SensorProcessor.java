@@ -175,11 +175,11 @@ public class SensorProcessor {
 					accel_debug_unbounded, accel_post_bounded,
 					accel_post_unbounded);
 
-			//System.out.print("\nMicro Accel- ");
-			//for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
-			//	System.out.print(accel_post_bounded[i] + ", ");
-			//}
-			for (int i = 0; i < accel_post_bounded.length; ++i) {			
+			// System.out.print("\nMicro Accel- ");
+			// for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
+			// System.out.print(accel_post_bounded[i] + ", ");
+			// }
+			for (int i = 0; i < accel_post_bounded.length; ++i) {
 				if (accel_post_bounded[i] >= 0.2
 						&& accel_post_bounded[i] <= 0.8) {
 					ramp_up = true;
@@ -344,6 +344,7 @@ public class SensorProcessor {
 				System.out.print(activityBoundedConfidence[i] + ", ");
 			}
 			int bounded_prediction = getPrediction(activityBoundedConfidence);
+			Global.AdaPrediction = bounded_prediction;
 
 			System.out.println("\nbounded prediction: " + bounded_prediction);
 
@@ -351,7 +352,8 @@ public class SensorProcessor {
 			Debug.logPrediction(currentTime, Global.getGroundTruth(),
 					bounded_prediction, accel_post_bounded, wifi_post_bounded,
 					gps_post_bounded, curPostProb, activityBoundedConfidence,
-					aveAccelFeatures, wifiFeature, gpsFeature, state);
+					aveAccelFeatures, wifiFeature, gpsFeature, state,
+					Global.GooglePrediction);
 
 			// Adapt sensors
 			if (!accel_only) {
@@ -359,7 +361,7 @@ public class SensorProcessor {
 						|| accel_prediction == Global.WALKING
 						|| accel_prediction == Global.RUNNING) {
 					state = 1;
-					
+
 					// Stop other sensors
 					if (WiFi.isWorking()) {
 						WiFi.stop();

@@ -12,27 +12,27 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.RemoteException;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 import edu.mit.csail.ada_lib.R;
-import edu.mit.csail.google.ActivityRecognitionScan;
 
 
 public class MainActivity extends Activity {
-	public static final String TAG = "Main.java";
+	public static final String TAG = "MainActivity";
 
 	/** UI Variables **/
 	private Spinner gt_spinner;
 	private Button btnSubmit;
 	private List<String> spinList = new ArrayList<String>();
-	
+	private TextView adaTextView;
+	private TextView googleTextView;
 	
 	
 	/** Variables handling activity-service connection **/
@@ -43,6 +43,16 @@ public class MainActivity extends Activity {
 		@Override
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			mService = new Messenger(service);
+			try{
+				Message msg = Message.obtain(null, Global.MSG_REGISTER_CLIENT);
+				msg.replyTo = mMessenger;
+				mService.send(msg);
+			}catch (RemoteException e) {
+				// In this case the service has crashed before we could even
+	            // do anything with it; we can count on soon being
+	            // disconnected (and then reconnected if it can be restarted)
+	            // so there is no need to do anything here.
+	        }
 			Toast.makeText(MainActivity.this, "Service connected",
 					Toast.LENGTH_SHORT).show();
 		}
@@ -60,7 +70,7 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
-
+		
 		// initialize
 		Global.startTime = System.nanoTime();
 		addItemsOnSpinner();
@@ -69,7 +79,10 @@ public class MainActivity extends Activity {
 		doStartService();
 		doBindService();
 		Global.setContext(this);
-		new ActivityRecognitionScan(this).startActivityRecognitionScan();
+		adaTextView = (TextView) findViewById(R.id.adaPrediction);
+		googleTextView = (TextView) findViewById(R.id.googlePrediction);
+		
+		
 	}
 
 	private void doStartService() {
@@ -85,9 +98,10 @@ public class MainActivity extends Activity {
 		// Establish a connection with the service. We use an explicit
 		// class name because there is no reason to be able to let other
 		// applications replace our component.
-		bindService(new Intent(MainActivity.this, AdaService.class),
-				mConnection, BIND_AUTO_CREATE);
-		mIsBound = true;
+		if(bindService(new Intent(MainActivity.this, AdaService.class),
+				mConnection, BIND_AUTO_CREATE)){
+			mIsBound = true;
+		}
 	}
 
 	void doUnbindService() {
@@ -95,6 +109,15 @@ public class MainActivity extends Activity {
 			// If we have received the service, and hence registered with
 			// it, then now is the time to unregister.
 			if (mService != null) {
+				try {
+	                Message msg = Message.obtain(null,
+	                        Global.MSG_UNREGISTER_CLIENT);
+	                msg.replyTo = mMessenger;
+	                mService.send(msg);
+	            } catch (RemoteException e) {
+	                // There is nothing special we need to do if the service
+	                // has crashed.
+	            }
 			}
 			// Detach our existing connection.
 			unbindService(mConnection);
@@ -134,7 +157,7 @@ public class MainActivity extends Activity {
 
 	public void addListenerOnSpinnerItemSelection() {
 		gt_spinner = (Spinner) findViewById(R.id.gt_spinner);
-		gt_spinner.setOnItemSelectedListener(new ItemSelectedListener());
+	
 	}
 
 	// get the selected dropdown list value
@@ -156,34 +179,29 @@ public class MainActivity extends Activity {
 
 		});
 	}
-
-	class ItemSelectedListener implements OnItemSelectedListener {
-		@Override
-		public void onItemSelected(AdapterView<?> arg0, View arg1, int arg2,
-				long arg3) {
-
-			// Toast.makeText(Global.context,
-			// "OnItemSelectedListener : " + spinList.get(arg2).toString(),
-			// Toast.LENGTH_SHORT).show();
-		}
-
-		@Override
-		public void onNothingSelected(AdapterView<?> arg0) {
-			// TODO Auto-generated method stub
-
-		}
-	}
-
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		return true;
 	}
-
+	
+	public void updatePredictionOnUI(int adaPrediction, int googlePrediction){
+		adaTextView.setText(Global.getAdaFriendlyGroundTruth(adaPrediction));
+		googleTextView.setText(Global.getGoogleFriendlyName(googlePrediction));
+	}
+	
+	
 	class IncomingHandler extends Handler {
 		@Override
 		public void handleMessage(Message msg) {
+			switch(msg.what){
+			case Global.UPDATE_UI_MSG:
+				updatePredictionOnUI(msg.arg1, msg.arg2);
+				break;
+			default:
+                super.handleMessage(msg);
+			}
 		}
 	}
 }

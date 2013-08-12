@@ -51,8 +51,12 @@ int drawable common_signin_btn_text_normal_light 0x7f020015
 int drawable common_signin_btn_text_pressed_dark 0x7f020016
 int drawable common_signin_btn_text_pressed_light 0x7f020017
 int drawable ic_launcher 0x7f020018
-int id action_settings 0x7f050007
+int id action_settings 0x7f05000b
+int id adaLabel 0x7f050007
+int id adaPrediction 0x7f050008
 int id btnSubmit 0x7f050006
+int id googleLabel 0x7f050009
+int id googlePrediction 0x7f05000a
 int id gt_spinner 0x7f050005
 int id hybrid 0x7f050004
 int id none 0x7f050000

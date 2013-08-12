@@ -42,7 +42,7 @@ public class Debug {
 			int prediction, double[] accel_post, double[] wifi_post,
 			double[] gps_post, double[] softVoting_prob, double[] ewma_prob,
 			double[] accel_feature, double wifi_feature, double gps_feature,
-			int state) {
+			int state, int googlePrediction) {
 		String accelPostStr = "";
 		String wifiPostStr = "";
 		String gpsPostStr = "";
@@ -79,9 +79,10 @@ public class Debug {
 		try {
 
 			String outputString = time + ";" + groundTruth + ";" + prediction
+					+ ";" + ewmaStr + ";" + softVotingStr 
 					+ ";" + accelPostStr + ";" + wifiPostStr + ";" + gpsPostStr
 					+ ";" + accelFeatureStr + ";" + wifi_feature + ";"
-					+ gps_feature + "\n";
+					+ gps_feature + ";" + state + ";" + googlePrediction + "\n";
 
 			if (file.canWrite()) {
 				out.write(outputString);
@@ -95,6 +96,8 @@ public class Debug {
 
 	public static void stop() {
 		try {
+			out.flush();
+			filewriter.flush();
 			out.close();
 			filewriter.close();
 		} catch (IOException e) {

@@ -1,5 +1,7 @@
 package edu.mit.csail.ada;
 
+import com.google.android.gms.location.DetectedActivity;
+
 import android.content.Context;
 
 public class Global {
@@ -26,11 +28,17 @@ public class Global {
 	public static Context context;
 	public static final double EWMA_ALPHA = 0.7;
 	
-	
+	public static int GooglePrediction = -1;
+	public static int AdaPrediction = -1;
 	public static int gt = 0;
+	
+	public static final int UPDATE_UI_MSG = 2;
+	public static final int MSG_REGISTER_CLIENT = 0;
+	public static final int MSG_UNREGISTER_CLIENT = 1;
 	public static void setContext(Context ctx){
 		context = ctx;
 	}
+	
 	public static void setGroundTruth(String activity){
 		if (activity.equals("Static")){
 			gt = STATIC;
@@ -46,6 +54,42 @@ public class Global {
 			System.exit(-1);
 		}
 	}
+	
+	public static String getAdaFriendlyGroundTruth(int gt){
+	
+		switch (gt){
+		case STATIC:
+			return "Still";
+		case WALKING:
+			return "Walking";
+		case RUNNING:
+			return "Running";
+		case BIKING:
+			return "Biking";
+		case DRIVING:
+			return "Driving";
+		default:
+			return "Unknown";
+		}
+	}
+	
+	public static String getGoogleFriendlyName(int detected_activity_type) {
+		switch (detected_activity_type) {
+		case DetectedActivity.IN_VEHICLE:
+			return "Vehicle";
+		case DetectedActivity.ON_BICYCLE:
+			return "Biking";
+		case DetectedActivity.ON_FOOT:
+			return "Foot";
+		case DetectedActivity.TILTING:
+			return "Tilting";
+		case DetectedActivity.STILL:
+			return "Still";
+		default:
+			return "Unknown";
+		}
+	}
+	
 	public static int getGroundTruth(){
 		return gt;
 	}

@@ -21,5 +21,40 @@
         android:layout_alignLeft="@+id/gt_spinner"
         android:layout_below="@+id/gt_spinner"
         android:text="Submit" />
+
+    <TextView
+        android:id="@+id/adaLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/btnSubmit"
+        android:layout_below="@+id/btnSubmit"
+        android:layout_marginTop="42dp"
+        android:text="Ada Prediction:" />
+
+    <TextView
+        android:id="@+id/adaPrediction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/adaLabel"
+        android:layout_below="@+id/adaLabel"
+        android:layout_centerVertical="true"
+        android:text="Unknown" />
+
+    <TextView
+        android:id="@+id/googleLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/adaPrediction"
+        android:layout_below="@+id/adaPrediction"
+        android:layout_marginTop="31dp"
+        android:text="Google Prediction:" />
+
+    <TextView
+        android:id="@+id/googlePrediction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/googleLabel"
+        android:layout_below="@+id/googleLabel"
+        android:text="Unknown" />
     
 </RelativeLayout>

@@ -17,9 +17,11 @@ public class ActivityRecognitionScan implements
 	private static final String TAG = "GoogleActivityRecog";
 	private static ActivityRecognitionClient mActivityRecognitionClient;
 	private static PendingIntent callbackIntent;
+	private int latencyInSec;
 
-	public ActivityRecognitionScan(Context context) {
+	public ActivityRecognitionScan(Context context, int latency) {
 		this.context = context;
+		this.latencyInSec = latency;
 	}
 
 	/**
@@ -32,7 +34,6 @@ public class ActivityRecognitionScan implements
 		mActivityRecognitionClient = new ActivityRecognitionClient(context,
 				this, this);
 		mActivityRecognitionClient.connect();
-		
 		Log.d(TAG, "startActivityRecognitionScan");
 		
 	}
@@ -60,7 +61,7 @@ public class ActivityRecognitionScan implements
 		Intent intent = new Intent(context, ActivityRecognitionService.class);
 		callbackIntent = PendingIntent.getService(context, 0, intent,
 				PendingIntent.FLAG_UPDATE_CURRENT);
-		mActivityRecognitionClient.requestActivityUpdates(0, callbackIntent); 
+		mActivityRecognitionClient.requestActivityUpdates(latencyInSec * 1000, callbackIntent); 
 	}
 
 	@Override
