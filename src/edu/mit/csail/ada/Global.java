@@ -27,7 +27,7 @@ public class Global {
 	public static final int INVALID_FEATURE = -1;
 	public static long startTime = 0;
 	public static Context context;
-	public static final double EWMA_ALPHA = 0.5; // Current weight
+	public static final double EWMA_ALPHA = 0.4; // Current weight
 	
 	public static int GooglePrediction = -1;
 	public static int AdaPrediction = -1;

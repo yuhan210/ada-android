@@ -10,6 +10,7 @@ import java.util.Date;
 
 import android.os.Environment;
 import android.util.Log;
+import android.widget.Toast;
 
 public class Debug {
 
@@ -33,6 +34,7 @@ public class Debug {
 			filewriter = new FileWriter(file);
 			out = new BufferedWriter(filewriter);
 		} catch (IOException e) {
+			Toast.makeText(Global.context, "Unable to write into file.", Toast.LENGTH_LONG).show();
 			Log.e("Debug", "Could not write file " + e.getMessage());
 		}
 
