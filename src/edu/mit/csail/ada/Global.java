@@ -21,12 +21,13 @@ public class Global {
 	public static final int RUNNING = 2;
 	public static final int BIKING = 3;
 	public static final int DRIVING = 4;
+	public static final int UNKNOWN = -1;
 	
 	public static final int LOOKBACK_NUM = 2;
 	public static final int INVALID_FEATURE = -1;
 	public static long startTime = 0;
 	public static Context context;
-	public static final double EWMA_ALPHA = 0.7;
+	public static final double EWMA_ALPHA = 0.5; // Current weight
 	
 	public static int GooglePrediction = -1;
 	public static int AdaPrediction = -1;
@@ -51,7 +52,7 @@ public class Global {
 		}else if(activity.equals("Driving")){
 			gt = DRIVING;
 		}else{
-			System.exit(-1);
+			gt = UNKNOWN;
 		}
 	}
 	

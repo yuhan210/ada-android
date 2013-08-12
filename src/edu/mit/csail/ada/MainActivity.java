@@ -149,6 +149,7 @@ public class MainActivity extends Activity {
 		spinList.add("Running");
 		spinList.add("Biking");
 		spinList.add("Driving");
+		spinList.add("Unknown");
 
 		ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this,
 				android.R.layout.simple_spinner_item, spinList);
