@@ -48,7 +48,6 @@ public class WiFi {
 	{
 		isWorking = false;
 		listSize = 0;
-		
 		if (isRegistered){
 			Global.context.unregisterReceiver(wifiReceiver);
 			isRegistered = false;
@@ -106,7 +105,7 @@ public class WiFi {
 		
 		LinkedHashSet<String> aPDimHashSet = new LinkedHashSet<String>();
 		
-		if (wifiList.size() > 0){			
+		if (listSize > 0){			
 			for(int i = 0; i < wifiList.size(); ++i){
 				for (int j = 0; j < wifiList.get(i).size(); ++j){
 					aPDimHashSet.add(wifiList.get(i).get(j).BSSID);						

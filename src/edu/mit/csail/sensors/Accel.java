@@ -88,7 +88,10 @@ public class Accel {
 	public static double[] getFeaturesInArray() {
 
 		int N = accelList.size();
-		if (N == 0) {
+		if (N < 2) {
+			for (int i = 0; i < Global.ACCEL_FEATURE_NUM; ++i) {
+				accelFeatures[i] = Global.INVALID_FEATURE;
+			}
 			return accelFeatures;
 		}
 
