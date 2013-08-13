@@ -241,22 +241,30 @@ public class SensorProcessor {
 					accel_post_unbounded);
 			int accel_prediction = getPrediction(accel_post_bounded);
 
-			System.out.print("\nAccel- ");
+			System.out.print("\nAccel bounded- ");
 			for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
 				System.out.print(accel_post_bounded[i] + ", ");
 			}
+			
+			System.out.print("\nAccel unbounded- ");
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
+				System.out.print(accel_post_unbounded[i] + ", ");
+			}
 
-			/**
-			 * System.out.println(accelFeatures[0] + "," + accelFeatures[1]+
-			 * ","+ accelFeatures[2]); for (int i = 0; i < Global.ACTIVITY_NUM;
-			 * ++i){ System.out.println("Accel - Activity:" + i + ": unbounded:"
-			 * + accel_debug_unbounded[i][0] + ", " +
-			 * accel_debug_unbounded[i][1] + ", "+ accel_debug_unbounded[i][2]);
-			 * } for (int i = 0; i < Global.ACTIVITY_NUM; ++i){
-			 * System.out.println("Accel - Activity:" + i + ": bounded:" +
-			 * accel_debug_bounded[i][0] + ", " + accel_debug_bounded[i][1] +
-			 * ", "+ accel_debug_bounded[i][2]); }
-			 **/
+			System.out.println(aveAccelFeatures[0] + "," + aveAccelFeatures[1]
+					+ "," + aveAccelFeatures[2]);
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
+				System.out.println("Accel - Activity:" + i + ": unbounded:"
+						+ accel_debug_unbounded[i][0] + ", "
+						+ accel_debug_unbounded[i][1] + ", "
+						+ accel_debug_unbounded[i][2]);
+			}
+			for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
+				System.out.println("Accel - Activity:" + i + ": bounded:"
+						+ accel_debug_bounded[i][0] + ", "
+						+ accel_debug_bounded[i][1] + ", "
+						+ accel_debug_bounded[i][2]);
+			}
 
 			// Posterior prob from WiFi
 			double wifiFeature = WiFi.getFeature();
@@ -266,10 +274,11 @@ public class SensorProcessor {
 			getPostProb(wifiKdeEstimator, wifiFeature, wifi_post_bounded,
 					wifi_post_unbounded);
 
+			/**
 			System.out.print("\nWiFi- ");
 			for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
 				System.out.print(wifi_post_bounded[i] + ", ");
-			}
+			}**/
 
 			/**
 			 * System.out.println("wifiFeature:" + wifiFeature); for (int i = 0;
@@ -288,10 +297,11 @@ public class SensorProcessor {
 			getPostProb(gpsKdeEstimator, gpsFeature, gps_post_bounded,
 					gps_post_unbounded);
 
+			/**
 			System.out.print("\nGPS- ");
 			for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
 				System.out.print(gps_post_bounded[i] + ", ");
-			}
+			}**/
 
 			// Make the prediction and adapt the sensors
 			double[] curPostProb = new double[Global.ACTIVITY_NUM];
@@ -480,11 +490,11 @@ public class SensorProcessor {
 			accel_post_bounded[i] = 1.0;
 			for (int j = 0; j < Global.ACCEL_FEATURE_NUM; ++j) {
 				accel_post_unbounded[i] *= accelKdeEstimators[i][j]
-						.evaluate_unbounded(accelFeatures[j]);
+						.evaluate_python_renorm(accelFeatures[j]);
 				accel_post_bounded[i] *= accelKdeEstimators[i][j]
 						.evaluate_renorm(accelFeatures[j]);
 				accel_debug_unbounded[i][j] = accelKdeEstimators[i][j]
-						.evaluate_unbounded((accelFeatures[j]));
+						.evaluate_python_renorm((accelFeatures[j]));
 				accel_debug_bounded[i][j] = accelKdeEstimators[i][j]
 						.evaluate_renorm((accelFeatures[j]));
 
@@ -492,7 +502,7 @@ public class SensorProcessor {
 			unbounded_denominator += accel_post_unbounded[i];
 			bounded_denominator += accel_post_bounded[i];
 		}
-
+		System.out.println("unbounded denominator:" + unbounded_denominator);
 		// Normalize
 		for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
 			accel_post_unbounded[i] /= unbounded_denominator;
