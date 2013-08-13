@@ -23,6 +23,8 @@ public class KDE {
 	/** The current bandwidth (only computed when needed) */
 	protected double m_Width = Double.MAX_VALUE;
 	
+	protected double python_width = Double.MAX_VALUE;
+	
 	/** Lower bound */
 	public static double m_Lower = -Double.MAX_VALUE;
 	
@@ -71,6 +73,8 @@ public class KDE {
 		m_Width = bw;
 	}
 
+	
+	
 	/**
 	  * Adds a data point to the density estimator.
 	  *
@@ -89,6 +93,23 @@ public class KDE {
 	   }
 	 }	
 	 
+	 public void updateWidth() {
+
+		    if (m_SumOfWeights > 0) {
+
+		      // Compute variance for scaling
+		      double mean = m_WeightedSum / m_SumOfWeights;
+		      double variance = m_WeightedSumSquared / m_SumOfWeights - mean * mean;
+		      if (variance < 0) {
+		        variance = 0;
+		      }
+
+		      // Compute kernel bandwidth
+		      python_width = Math.sqrt(variance) * m_Width;
+		    } 
+		  }
+		
+	 
 	 /**
 	  * Compute the pdf of the point (does not consider the boundary)
 	  * @param point
@@ -104,7 +125,7 @@ public class KDE {
 
 		      // Skip entry if weight is zero because it cannot contribute to sum
 		      if (entry.getValue() > 0) {
-		    	double z = point - entry.getKey()/m_Width;
+		    	double z = (point - entry.getKey())/m_Width;
 		    	double terms = kernel(z);
 		    	terms *= entry.getValue()/m_Width;
 		    	sum += terms;
@@ -114,7 +135,27 @@ public class KDE {
 		    return sum/(m_SumOfWeights);
 	 }
 	
-	 
+	 /**
+	  * Based on python's implementation
+	  * https://github.com/scipy/scipy/blob/v0.12.0/scipy/stats/kde.py#L42
+	  * @return
+	  */
+	 public double evaluate_python_unbounded(double point){
+		  // Iterate through data values
+		  Iterator<Map.Entry<Double,Double>> itr = m_TM.entrySet().iterator();
+		  double sum = 0.0;
+		  while(itr.hasNext()){
+			  Map.Entry<Double, Double> entry = itr.next();
+			  
+			  if(entry.getValue() > 0){
+				  double z = (point - entry.getKey())/python_width;
+				  double terms = kernel(z);
+				  terms *= entry.getValue()/python_width;
+				  sum += terms;
+			  }
+		  }
+		 return sum/(m_SumOfWeights);
+	 }
 	
 	 /**
 	  * Approximate normal distribution's cdf (1/2 * [1 + erf(x/sqrt(2))])
@@ -124,6 +165,7 @@ public class KDE {
 		
 	        return 0.5 * (1.0 + erf(z / (Math.sqrt(2.0))));
 	 }
+	 
 	 /**
 	  * ERF (Gaussian Error Function)
 	  * fractional error in math formula less than 1.2 * 10 ^ -7.
@@ -148,6 +190,7 @@ public class KDE {
 	     else        return -ans;
 	 }
 
+	 
 	 /**
 	  * Evaluate bounded KDE probability using renormalization
 	  * @param point
@@ -185,10 +228,12 @@ public class KDE {
 		 return Math.exp(-z*z / 2) / Math.sqrt(2 * Math.PI);
 	 }
 	 
+	 
      // Not being used.. return Phi(z, mu, sigma) = Gaussian cdf with mean mu and stddev sigma
 	 public double taylor_cdf(double z, double mu, double sigma) {
 	     return Phi((z - mu) / sigma);
      } 
+	 
 	 
 	 // Not being used...return Phi(z) = standard Gaussian cdf using Taylor approximation
 	 public double Phi(double z) {
@@ -219,6 +264,7 @@ public class KDE {
 		    runningLogSum(m_TM.tailMap(value).entrySet(), value, sums);
 		    return sums[0] - Math.log(m_SumOfWeights);
 	  }
+	  
 	 /**
 	   * Returns textual description of this estimator.
 	   */
