@@ -79,6 +79,7 @@ public class GPS {
 	public static void stop(){
 		isWorking = false;
 		listSize = 0;
+		aveSpeed = Global.INVALID_FEATURE;
 		locationManager.removeUpdates(locationListener);
 	}
 }

@@ -63,6 +63,7 @@ public class WiFi {
 	  	 public void onReceive(Context c, Intent intent) {  		
 	  		ArrayList<ScanResult> curScanResult = (ArrayList<ScanResult>) wifiManager.getScanResults();
 	  		
+	  		// pop if full
 	  		if(listSize == Global.LOOKBACK_NUM){
 	  			wifiList.remove(0);
 	  			--listSize;
@@ -74,8 +75,11 @@ public class WiFi {
 	    		System.out.println(curScanResult.get(i).SSID + "," + curScanResult.get(i).BSSID + "," + curScanResult.get(i).level);
 	    	}**/
 	  		
+	  		// push
 	  		wifiList.add(curScanResult);
 	  		++listSize;
+	  		
+	  		// if it's full, updateDistance
 	  		if(listSize == Global.LOOKBACK_NUM){
 	  			updateDistance(listSize);
 	  		}
@@ -84,14 +88,14 @@ public class WiFi {
 	
 	public static boolean isDensityHigh(){
 		
-		if (wifiList.size() > 0){
+		if (listSize > 0){
 			// we have some wifi scans
 			
 			double aveApNum = 0.0;
-			for(int i = 0; i < wifiList.size(); ++i){
+			for(int i = 0; i < listSize; ++i){
 				aveApNum += wifiList.get(i).size();
 			}
-			aveApNum /= (wifiList.size() * 1.0);
+			aveApNum /= (listSize * 1.0);
 			if(aveApNum > 1){
 				// the density is high
 				return true;
@@ -102,11 +106,13 @@ public class WiFi {
 		// not enough sample, assuming the density is high
 		return true;
 	}
+	
 	private static double updateDistance(int scanNum){
 		
 		LinkedHashSet<String> aPDimHashSet = new LinkedHashSet<String>();
 		
-		if (listSize > 0){			
+		if (listSize > 0 && isDensityHigh()){		
+			// Set the AP dimension
 			for(int i = 0; i < wifiList.size(); ++i){
 				for (int j = 0; j < wifiList.get(i).size(); ++j){
 					aPDimHashSet.add(wifiList.get(i).get(j).BSSID);						
@@ -153,7 +159,7 @@ public class WiFi {
 			return aveDistance;
 		}
 		
-		aveDistance =  Global.INVALID_FEATURE;
+		aveDistance = Global.INVALID_FEATURE;
 		return aveDistance;
 	}
 	
