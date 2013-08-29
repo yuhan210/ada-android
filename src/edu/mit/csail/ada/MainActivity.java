@@ -65,6 +65,7 @@ public class MainActivity extends Activity {
 	};
 
 	private boolean hasInitialized = false;
+	private boolean resumeHasRun = false;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +88,17 @@ public class MainActivity extends Activity {
 
 	}
 
+	protected void onResume(){
+		super.onResume();
+		if (resumeHasRun){
+			
+			updatePredictionOnUI(Global.AdaPrediction, Global.GooglePrediction);
+			
+		}else{ // first time start the app
+			resumeHasRun = true;
+			return;
+		}
+	}
 	private void doStartService() {
 		ComponentName n = startService(new Intent(MainActivity.this,
 				AdaService.class));

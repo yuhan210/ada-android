@@ -36,6 +36,10 @@ public class Global {
 	public static final int UPDATE_UI_MSG = 2;
 	public static final int MSG_REGISTER_CLIENT = 0;
 	public static final int MSG_UNREGISTER_CLIENT = 1;
+	
+	// Calibrate
+	public static final double SENSATION_OFFSET = 0.4;
+	
 	public static void setContext(Context ctx){
 		context = ctx;
 	}

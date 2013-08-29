@@ -48,6 +48,7 @@ public class WiFi {
 	{
 		isWorking = false;
 		listSize = 0;
+		aveDistance = Global.INVALID_FEATURE;
 		if (isRegistered){
 			Global.context.unregisterReceiver(wifiReceiver);
 			isRegistered = false;

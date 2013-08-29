@@ -43,7 +43,7 @@ public class Debug {
 	public static void logPrediction(long time, int groundTruth,
 			int prediction, double[] accel_post, double[] wifi_post,
 			double[] gps_post, double[] softVoting_prob, double[] ewma_prob,
-			double[] accel_feature, double wifi_feature, double gps_feature,
+			double[] accel_feature, double wifi_feature, double gps_feature, double[][] accel_debug,
 			int state, int googlePrediction) {
 		String accelPostStr = "";
 		String wifiPostStr = "";
@@ -51,6 +51,7 @@ public class Debug {
 		String softVotingStr = "";
 		String ewmaStr = "";
 		String accelFeatureStr = "";
+		String accelDebugStr = "";
 
 		DecimalFormat df = new DecimalFormat("#.####");
 		for (int i = 0; i < Global.ACTIVITY_NUM; ++i) {
@@ -60,12 +61,15 @@ public class Debug {
 				gpsPostStr += df.format(gps_post[i]);
 				softVotingStr += df.format(softVoting_prob[i]);
 				ewmaStr += df.format(ewma_prob[i]);
+				accelDebugStr += df.format(accel_debug[i][0]) + ":" + df.format(accel_debug[i][1]) + ":" + df.format(accel_debug[i][2]);
+			
 			} else {
 				accelPostStr += "," + df.format(accel_post[i]);
 				wifiPostStr += "," + df.format(wifi_post[i]);
 				gpsPostStr += "," + df.format(gps_post[i]);
 				softVotingStr += "," + df.format(softVoting_prob[i]);
 				ewmaStr += "," + df.format(ewma_prob[i]);
+				accelDebugStr += "," + df.format(accel_debug[i][0]) + ":" + df.format(accel_debug[i][1]) + ":" + df.format(accel_debug[i][2]);
 			}
 
 		}
@@ -84,7 +88,7 @@ public class Debug {
 					+ ";" + ewmaStr + ";" + softVotingStr 
 					+ ";" + accelPostStr + ";" + wifiPostStr + ";" + gpsPostStr
 					+ ";" + accelFeatureStr + ";" + wifi_feature + ";"
-					+ gps_feature + ";" + state + ";" + googlePrediction + "\n";
+					+ gps_feature + ";" + accelDebugStr + ";" + state + ";" + googlePrediction + "\n";
 
 			if (file.canWrite()) {
 				out.write(outputString);
